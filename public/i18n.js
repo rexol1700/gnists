@@ -5,8 +5,8 @@ const LANGS = {
         // Landing
         landing_title:    'Gnists',
         landing_sub:      'Et verktøy for å fostre aktiv læring.',
-        landing_theory1:  'Mange spørsmål popper inn i løpet av en dag. For å utforske disse samtidig som du blir bedre kjent med deg selv, fokuserer vi på nysgjerrigheten din mens du skaper og utvikler deg selv.',
-        landing_theory2:  'Teorien er at du får distribuert energien din slik at du kommer deg lengre — uten å sette deg fast i noe mindre betydelig for tidlig.',
+        landing_theory1:  'Mange spørsmål popper inn i løpet av en dag. For å utforske disse samtidig som du blir bedre kjent med deg selv, fokuserer vi på nysgjerrigheten din mens du skaper og utvikler.',
+        landing_theory2:  'Teorien er at du får distribuert energien din slik at du kommer deg lengre uten å sette deg fast i noe mindre betydelig for tidlig.',
         landing_register: 'Registrer deg',
         landing_login:    'Logg inn',
         landing_privacy:  'Dataen din lagres sikkert og er kun synlig for deg.',
@@ -69,8 +69,8 @@ const LANGS = {
         // Landing
         landing_title:    'Gnists',
         landing_sub:      'A tool for active learning.',
-        landing_theory1:  'Questions pop up throughout the day. To explore them while getting to know yourself better, we focus on your curiosity as you create and develop yourself.',
-        landing_theory2:  'The theory is that you distribute your energy so you go further — without getting stuck on something less important too early.',
+        landing_theory1:  'Questions pop up throughout the day. To explore them while getting to know yourself better, we focus on your curiosity as you create and develop.',
+        landing_theory2:  'The theory is that you distribute your energy so you go further without getting stuck on something less important too early.',
         landing_register: 'Create account',
         landing_login:    'Log in',
         landing_privacy:  'Your data is stored securely and only visible to you.',
