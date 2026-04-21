@@ -59,7 +59,7 @@ const LANGS = {
         // Buttons
         btn_clear:        '⟲ Tøm',
         btn_reset_all:    'Tøm alt',
-        empty_list:       'Ingen ting ennå…',
+        empty_list:       'Ingenting ennå…',
         empty_keywords:   'Ingen nøkkelord ennå…',
         empty_tasks:      'Ingen oppgaver ennå…',
         empty_subtasks:   'Ingen deloppgaver ennå',
