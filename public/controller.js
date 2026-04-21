@@ -237,6 +237,8 @@ async function removeSubtask(taskId, subtaskId) {
 function lightToggle() {
     model.isLightmode = !model.isLightmode;
     document.body.classList.toggle('lightmode', model.isLightmode);
+    const btn = document.querySelector('.btn-light');
+    if (btn) btn.classList.toggle('on', model.isLightmode);
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
