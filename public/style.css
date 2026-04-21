@@ -553,10 +553,26 @@ ul { list-style: none; display: flex; flex-direction: column; gap: 5px; }
     to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── RESPONSIVE — allow scroll on mobile ─────────────────────────────────── */
+/* ── RESPONSIVE ──────────────────────────────────────────────────────────── */
 @media (max-width: 700px) {
-    #app { height: auto; overflow: visible; }
-    .board { grid-template-columns: 1fr; grid-template-rows: auto; background: var(--bg); gap: 1px; }
-    .panel-wide { grid-column: 1; }
-    .topbar { flex-wrap: wrap; }
+    #app { height: auto; overflow: visible; min-height: 100vh; }
+
+    .topbar { flex-wrap: wrap; gap: 8px; padding: 10px 14px; }
+    .topbar-actions { width: 100%; flex-wrap: wrap; gap: 6px; }
+    .topbar-user { flex: 1; }
+
+    .board {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        overflow: visible;
+    }
+
+    .panel { overflow: visible; height: auto; min-height: 120px; }
+    .panel-scroll { overflow: visible; max-height: none; }
+
+    .btn-icon { width: 32px; height: 32px; font-size: 0.9rem; }
+    .btn-reset { width: 32px; height: 32px; }
+    .add-input { font-size: 1rem; padding: 10px 13px; }
+    .task-main { padding: 10px 12px; }
 }
