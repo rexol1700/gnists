@@ -5,7 +5,7 @@ const LANGS = {
         // Landing
         landing_title:    'Gnists',
         landing_sub:      'Et verktøy for å fostre aktiv læring.',
-        landing_theory1:  'Gnists er et personlig tavle hvor du samler det som opptar deg — spørsmål, interesser, nøkkelord og mål.',
+        landing_theory1:  'Gnists er en personlig tavle hvor du samler det som opptar deg — spørsmål, interesser, nøkkelord og mål.',
         landing_theory2:  '',
         landing_register: 'Registrer deg',
         landing_login:    'Logg inn',
@@ -69,7 +69,7 @@ const LANGS = {
         // Landing
         landing_title:    'Gnists',
         landing_sub:      'A tool for active learning.',
-        landing_theory1:  'Questions pop up throughout the day. To explore them while getting to know yourself better, we focus on your curiosity as you create and develop.',
+        landing_theory1:  "Gnists is a personal board where you collect what's on your mind — questions, interests, keywords and goals.",
         landing_theory2:  'The theory is that you distribute your energy so you go further without getting stuck on something less important too early, and that you continuously renew.',
         landing_register: 'Create account',
         landing_login:    'Log in',
