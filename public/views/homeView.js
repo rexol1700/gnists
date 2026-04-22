@@ -15,6 +15,32 @@ function homeView() {
 
     <div class="board">
 
+
+        <!-- Row 2: Questions (wide) | Tasks -->
+        <div class="panel" style="grid-column: span 2;">
+            <div class="panel-header">
+                <span class="panel-title">${t('sec_questions')}</span>
+                <button class="btn-reset"
+                    onclick="spinReset('questions', this)" title="${t('btn_clear')}">↺</button>
+            </div>
+            <input class="add-input" placeholder="${t('ph_questions')}"
+                onkeydown="if(event.key==='Enter') addItem('questions',this)">
+            <div class="panel-scroll"><ul>${renderSimpleList('questions')}</ul></div>
+            <button class="btn-reset-all" onclick="doResetAll(this)">
+                <span class="reset-icon">↺</span> ${t('btn_reset_all')}
+            </button>
+        </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <span class="panel-title">${t('sec_tasks')}</span>
+            </div>
+            <input class="add-input" placeholder="${t('ph_tasks')}"
+                onkeydown="if(event.key==='Enter') addTask(this)">
+            <div class="panel-scroll">${renderTasks()}</div>
+        </div>
+
+    </div>
         <!-- Row 1: Interests | Learning | Keywords -->
         <div class="panel">
             <div class="panel-header">
@@ -49,31 +75,7 @@ function homeView() {
             <div class="panel-scroll"><ul>${renderKeywords()}</ul></div>
         </div>
 
-        <!-- Row 2: Questions (wide) | Tasks -->
-        <div class="panel" style="grid-column: span 2;">
-            <div class="panel-header">
-                <span class="panel-title">${t('sec_questions')}</span>
-                <button class="btn-reset"
-                    onclick="spinReset('questions', this)" title="${t('btn_clear')}">↺</button>
-            </div>
-            <input class="add-input" placeholder="${t('ph_questions')}"
-                onkeydown="if(event.key==='Enter') addItem('questions',this)">
-            <div class="panel-scroll"><ul>${renderSimpleList('questions')}</ul></div>
-            <button class="btn-reset-all" onclick="doResetAll(this)">
-                <span class="reset-icon">↺</span> ${t('btn_reset_all')}
-            </button>
-        </div>
-
-        <div class="panel">
-            <div class="panel-header">
-                <span class="panel-title">${t('sec_tasks')}</span>
-            </div>
-            <input class="add-input" placeholder="${t('ph_tasks')}"
-                onkeydown="if(event.key==='Enter') addTask(this)">
-            <div class="panel-scroll">${renderTasks()}</div>
-        </div>
-
-    </div>
+        
     `;
 }
 
