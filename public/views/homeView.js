@@ -6,6 +6,9 @@ function homeView() {
         <div class="topbar-actions">
             ${langSwitcher()}
             <span class="topbar-user">👤 ${API.username}</span>
+            <button class="btn-reset-all" onclick="doResetAll(this)">
+                <span class="reset-icon">↺</span> ${t('btn_reset_all')}
+            </button>
             <button class="btn-light ${lightOn ? 'on' : ''}"
                 onclick="lightToggle()"
                 title="${lightOn ? t('btn_dark') : t('btn_light')}"></button>
@@ -25,9 +28,7 @@ function homeView() {
             <input class="add-input" placeholder="${t('ph_questions')}"
                 onkeydown="if(event.key==='Enter') addItem('questions',this)">
             <div class="panel-scroll"><ul>${renderSimpleList('questions')}</ul></div>
-            <button class="btn-reset-all" onclick="doResetAll(this)">
-                <span class="reset-icon">↺</span> ${t('btn_reset_all')}
-            </button>
+            
         </div>
 
 
