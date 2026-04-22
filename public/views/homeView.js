@@ -104,6 +104,10 @@ function spinReset(listName, btn) {
 
 // Reset all with confirmation
 async function doResetAll(btn) {
+    const confirmed = confirm(lang === 'no'
+        ? 'Er du sikker? Dette sletter alt.'
+        : 'Are you sure? This will clear everything.');
+    if (!confirmed) return;
     const label = btn.querySelector('.reset-icon');
     label.style.transform = 'rotate(-360deg)';
     label.style.transition = 'transform 0.5s cubic-bezier(.4,0,.2,1)';
