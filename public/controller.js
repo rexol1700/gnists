@@ -111,7 +111,11 @@ async function resetAll() {
 async function resetList(listName) {
     try {
         await API.resetList(listName);
-        model.lists[listName] = [];
+        if (listName === 'tasks') {
+            model.tasks = [];
+        } else {
+            model.lists[listName] = [];
+        }
         updateView();
     } catch (err) {
         toast(err.message, 'error');

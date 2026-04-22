@@ -18,7 +18,7 @@ function homeView() {
 
     <div class="board">
 
-        <!-- Row 2: Questions (wide) | Tasks -->
+        <!-- Row 1: Questions (wide) | Tasks -->
         <div class="panel" style="grid-column: span 2;">
             <div class="panel-header">
                 <span class="panel-title">${t('sec_questions')}</span>
@@ -43,7 +43,7 @@ function homeView() {
             <div class="panel-scroll"><ul>${renderKeywords()}</ul></div>
         </div>
         
-        <!-- Row 1: Interests | Learning | Keywords -->
+        <!-- Row 2: Interests | Learning | Keywords -->
         <div class="panel">
             <div class="panel-header">
                 <span class="panel-title">${t('sec_interests')}</span>
@@ -69,6 +69,8 @@ function homeView() {
         <div class="panel">
             <div class="panel-header">
                 <span class="panel-title">${t('sec_tasks')}</span>
+                <button class="btn-reset"
+                    onclick="spinReset('learningGoals', this)" title="${t('btn_clear')}">↺</button>
             </div>
             <input class="add-input" placeholder="${t('ph_tasks')}"
                 onkeydown="if(event.key==='Enter') addTask(this)">
