@@ -15,7 +15,6 @@ function homeView() {
 
     <div class="board">
 
-
         <!-- Row 2: Questions (wide) | Tasks -->
         <div class="panel" style="grid-column: span 2;">
             <div class="panel-header">
@@ -39,8 +38,7 @@ function homeView() {
                 onkeydown="if(event.key==='Enter') addTask(this)">
             <div class="panel-scroll">${renderTasks()}</div>
         </div>
-
-    </div>
+        
         <!-- Row 1: Interests | Learning | Keywords -->
         <div class="panel">
             <div class="panel-header">
@@ -76,6 +74,8 @@ function homeView() {
         </div>
 
         
+
+    </div>
     `;
 }
 
