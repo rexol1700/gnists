@@ -30,13 +30,16 @@ function homeView() {
             </button>
         </div>
 
+
         <div class="panel">
             <div class="panel-header">
-                <span class="panel-title">${t('sec_tasks')}</span>
+                <span class="panel-title">${t('sec_keywords')}</span>
+                <button class="btn-reset"
+                    onclick="spinReset('Nøkkelord', this)" title="${t('btn_clear')}">↺</button>
             </div>
-            <input class="add-input" placeholder="${t('ph_tasks')}"
-                onkeydown="if(event.key==='Enter') addTask(this)">
-            <div class="panel-scroll">${renderTasks()}</div>
+            <input class="add-input" placeholder="${t('ph_keywords')}"
+                onkeydown="if(event.key==='Enter') addKeyword(this)">
+            <div class="panel-scroll"><ul>${renderKeywords()}</ul></div>
         </div>
         
         <!-- Row 1: Interests | Learning | Keywords -->
@@ -64,13 +67,11 @@ function homeView() {
 
         <div class="panel">
             <div class="panel-header">
-                <span class="panel-title">${t('sec_keywords')}</span>
-                <button class="btn-reset"
-                    onclick="spinReset('Nøkkelord', this)" title="${t('btn_clear')}">↺</button>
+                <span class="panel-title">${t('sec_tasks')}</span>
             </div>
-            <input class="add-input" placeholder="${t('ph_keywords')}"
-                onkeydown="if(event.key==='Enter') addKeyword(this)">
-            <div class="panel-scroll"><ul>${renderKeywords()}</ul></div>
+            <input class="add-input" placeholder="${t('ph_tasks')}"
+                onkeydown="if(event.key==='Enter') addTask(this)">
+            <div class="panel-scroll">${renderTasks()}</div>
         </div>
 
         
