@@ -134,16 +134,13 @@ function renderAddPanelInRow() {
     return `
         <div class="tile-panel tile-add-panel ${isOpen ? 'open' : ''}"
              style="flex: 1 1 0%; min-width: 80px;"
-             onclick="${isOpen ? '' : 'toggleAddPanel()}">
+             onclick="${isOpen ? '' : 'toggleAddPanel()'}">
             <div class="tile-panel-inner tile-add-inner">
                 <button class="add-panel-btn ${isOpen ? 'open' : ''}"
                         onclick="event.stopPropagation(); toggleAddPanel()">
                     <span class="add-panel-cross">+</span>
                 </button>
-                <div class="add-panel-label ${isOpen ? '' : 'muted'}">${isOpen
-                    ? (lang === 'no' ? 'Velg panel' : 'Choose panel')
-                    : (lang === 'no' ? 'Legg til' : 'Add panel')
-                }</div>
+                <div class="add-panel-label ${isOpen ? '' : 'muted'}">${isOpen ? (lang === 'no' ? 'Velg panel' : 'Choose panel') : (lang === 'no' ? 'Legg til' : 'Add panel')}</div>
                 ${picker}
             </div>
         </div>
@@ -307,15 +304,6 @@ function tileResizeEnd() {
 function toggleAddPanel() {
     model.addPanelOpen = !model.addPanelOpen;
     updateView();
-}
-
-function langSwitcher() {
-    return /*html*/`
-        <div class="lang-switcher">
-            <button class="lang-btn ${lang === 'no' ? 'active' : ''}" onclick="setLang('no')">🇳🇴 NO</button>
-            <button class="lang-btn ${lang === 'en' ? 'active' : ''}" onclick="setLang('en')">🇬🇧 EN</button>
-        </div>
-    `;
 }
 
 function spinReset(listName, btn) {

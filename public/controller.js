@@ -282,3 +282,14 @@ function removeBill(id) {
         })
         .catch(err => toast(err.message, 'error'));
 }
+
+// ── LANG SWITCHER (shared by all views) ──────────────────────────────────────
+
+function langSwitcher() {
+    return /*html*/`
+        <div class="lang-switcher">
+            <button class="lang-btn ${lang === 'no' ? 'active' : ''}" onclick="setLang('no')">🇳🇴 NO</button>
+            <button class="lang-btn ${lang === 'en' ? 'active' : ''}" onclick="setLang('en')">🇬🇧 EN</button>
+        </div>
+    `;
+}
