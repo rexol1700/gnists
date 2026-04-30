@@ -259,6 +259,7 @@ body.tile-resizing .tile-resize-handle { pointer-events: all; }
     opacity: 0.5;
     transition: opacity 0.15s;
     user-select: none;
+    -webkit-user-drag: element;
 }
 .panel-drag-grip:active { cursor: grabbing; }
 .tile-panel:hover .panel-drag-grip { opacity: 1; }

@@ -58,9 +58,6 @@ function renderTileCell(cell, rIdx, cIdx, row) {
              data-panel-id="${panel.id}"
              data-row="${rIdx}"
              data-col="${cIdx}"
-             draggable="true"
-             ondragstart="tileDragStart(event, '${panel.id}')"
-             ondragend="tileDragEnd(event)"
              ondragover="tileDragOver(event)"
              ondrop="tileDrop(event, '${panel.id}')"
              ondragleave="tileDragLeave(event)">
@@ -73,7 +70,11 @@ function renderTileCell(cell, rIdx, cIdx, row) {
 
             <div class="tile-panel-inner">
                 <div class="panel-header">
-                    <span class="panel-drag-grip" title="${lang === 'no' ? 'Dra for å flytte' : 'Drag to move'}">⠿</span>
+                    <span class="panel-drag-grip"
+                          draggable="true"
+                          ondragstart="tileDragStart(event, '${panel.id}')"
+                          ondragend="tileDragEnd(event)"
+                          title="${lang === 'no' ? 'Dra for å flytte' : 'Drag to move'}">⠿</span>
                     <span class="panel-icon">${panel.icon}</span>
                     <span class="panel-title"
                           ondblclick="layoutExpandInRow('${panel.id}')"
@@ -155,9 +156,13 @@ function tileDragStart(event, id) {
     _tileDragging = id;
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', id);
+    // Use the whole panel as drag ghost
+    const panelEl = document.querySelector(`.tile-panel[data-panel-id="${id}"]`);
+    if (panelEl && event.dataTransfer.setDragImage) {
+        event.dataTransfer.setDragImage(panelEl, 20, 20);
+    }
     setTimeout(() => {
-        const el = document.querySelector(`.tile-panel[data-panel-id="${id}"]`);
-        if (el) el.classList.add('tile-dragging');
+        if (panelEl) panelEl.classList.add('tile-dragging');
         const board = document.getElementById('tile-board');
         if (board) board.classList.add('drag-active');
     }, 0);
