@@ -677,3 +677,157 @@ body.lightmode .bill-date-input { color-scheme: light; }
 .landing-logo { font-family: var(--font); font-size: 3rem; font-weight: 700; color: var(--accent); letter-spacing: 0.1em; }
 .landing-tagline { font-size: 1rem; color: var(--muted); text-align: center; max-width: 380px; }
 .landing-actions { display: flex; gap: 10px; }
+
+/* ── MISSING: btn, btn-ghost, lang-switcher-top, landing, auth-switch ────── */
+
+.btn {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 22px;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    letter-spacing: 0.02em;
+}
+.btn:hover { opacity: 0.85; transform: translateY(-1px); }
+
+.btn-ghost {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 22px;
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+.btn-ghost:hover { background: #6c63ff14; transform: translateY(-1px); }
+
+.lang-switcher-top {
+    position: absolute;
+    top: 16px;
+    right: 20px;
+}
+
+/* Landing page */
+.landing-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    gap: 28px;
+    padding: 40px 20px;
+    position: relative;
+    max-width: 560px;
+    margin: 0 auto;
+}
+
+.landing-hero { text-align: center; }
+
+.landing-title {
+    font-family: var(--font);
+    font-size: 2.6rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+    margin-bottom: 10px;
+}
+
+.landing-sub {
+    font-size: 1rem;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.landing-theory {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.6;
+    max-width: 420px;
+}
+
+.landing-btns {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.landing-privacy {
+    font-size: 0.75rem;
+    color: var(--muted);
+    opacity: 0.6;
+    text-align: center;
+}
+
+/* Auth pages */
+.auth-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    padding: 20px;
+    gap: 14px;
+    position: relative;
+}
+
+.auth-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 30px 32px;
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.auth-card h1 {
+    font-family: var(--font);
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+    margin-bottom: 2px;
+}
+
+.auth-card p {
+    font-size: 0.84rem;
+    color: var(--muted);
+    margin-bottom: 4px;
+}
+
+.auth-card label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    margin-bottom: -6px;
+}
+
+.auth-switch {
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-align: center;
+}
+
+.auth-switch a {
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.auth-switch a:hover { opacity: 0.8; }
