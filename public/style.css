@@ -373,46 +373,120 @@ ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
 }
 
 /* ── KEYWORD MEANING ─────────────────────────────────────────────────────── */
+/* ── KEYWORD BLOCKS ──────────────────────────────────────────────────────── */
+.keyword-block {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+}
+.keyword-block:last-child { border-bottom: none; }
+
+.kw-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 2px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.12s;
+    user-select: none;
+}
+.kw-header:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.kw-open .kw-header { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+
+.kw-chip {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+    flex: 1;
+    min-width: 0;
+}
+
+.kw-indicator {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+    margin-bottom: 1px;
+    box-shadow: 0 0 6px var(--accent);
+    transition: box-shadow 0.2s;
+}
+.kw-open .kw-indicator {
+    box-shadow: 0 0 10px var(--accent), 0 0 20px color-mix(in srgb, var(--accent) 40%, transparent);
+}
+
+.kw-word {
+    font-size: 0.88rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--fg, var(--text));
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.kw-preview {
+    font-size: 0.72rem;
+    color: var(--muted);
+    letter-spacing: 0.01em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+    padding-top: 1px;
+}
+
+.kw-meta {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+.kw-arrow {
+    font-size: 0.6rem;
+    color: var(--muted);
+    opacity: 0.6;
+    transition: transform 0.2s, opacity 0.2s;
+}
+.kw-open .kw-arrow { opacity: 1; color: var(--accent); }
+.kw-delete { opacity: 0; transition: opacity 0.15s; }
+.kw-header:hover .kw-delete { opacity: 1; }
+
+.kw-body {
+    padding: 2px 4px 10px 16px;
+    animation: kwSlideDown 0.18s ease;
+}
+@keyframes kwSlideDown {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
 .keyword-meaning {
     display: block;
     width: 100%;
     box-sizing: border-box;
-    margin: 3px 0 6px 10px;
-    padding: 5px 9px;
-    border: none;
-    border-left: 2px solid var(--accent);
-    color: var(--muted);
+    padding: 8px 11px;
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+    border-left: 3px solid var(--accent);
+    color: var(--fg, var(--text));
     font-size: 0.82rem;
     font-family: var(--font);
-    line-height: 1.45;
-    border-radius: 0 5px 5px 0;
-    background: #6c63ff08;
+    line-height: 1.6;
+    border-radius: 0 6px 6px 0;
+    background: color-mix(in srgb, var(--accent) 4%, var(--surface));
     outline: none;
-    resize: none;
-    cursor: text;
-    white-space: pre-wrap;
-    overflow: hidden;
+    resize: vertical;
+    min-height: 5em;
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 .keyword-meaning:focus {
-    color: var(--fg, var(--text));
-    background: #6c63ff14;
-    border-left-width: 3px;
+    border-color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent);
 }
-.keyword-meaning.meaning-empty {
-    background: transparent;
-    border-left-color: var(--border);
-    color: var(--muted);
-    opacity: 0.6;
-}
-.keyword-meaning.meaning-empty:focus {
-    background: #6c63ff08;
-    border-left-color: var(--accent);
-    opacity: 1;
-}
-.meaning-textarea {
-    /* auto-grow via JS if needed; min height = 2 rows */
-    min-height: 2.6em;
-}
+.keyword-meaning::placeholder { color: var(--muted); opacity: 0.6; }
+
 .meaning-input { margin-top: 3px; margin-bottom: 5px; font-size: 0.82rem; }
 
 /* ── TASKS ───────────────────────────────────────────────────────────────── */

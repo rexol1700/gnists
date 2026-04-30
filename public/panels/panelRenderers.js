@@ -27,17 +27,30 @@ function renderKeywordsPanel(panel) {
     const items = model.lists[panel.id] || [];
     if (!items.length) return `<li class="empty-msg">${t(panel.emptyKey)}</li>`;
     return items.map((item, idx) => {
+        const isOpen = model.editingIndex === idx;
+        const hasMeaning = item.extra && item.extra.trim();
         return /*html*/`
-            <div class="keyword-block">
-                <div class="item-row">
-                    <li class="keyword-word">${escHtml(item.value)}</li>
-                    <button class="btn-icon" onclick="removeItem('${panel.id}',${item.id})">✕</button>
+            <div class="keyword-block ${isOpen ? 'kw-open' : 'kw-closed'}">
+                <div class="kw-header" onclick="editKeyword(${idx})">
+                    <span class="kw-chip">
+                        <span class="kw-indicator"></span>
+                        <span class="kw-word">${escHtml(item.value)}</span>
+                        ${hasMeaning && !isOpen ? `<span class="kw-preview">${escHtml(item.extra.slice(0, 38))}${item.extra.length > 38 ? '…' : ''}</span>` : ''}
+                    </span>
+                    <span class="kw-meta">
+                        <span class="kw-arrow">${isOpen ? '▲' : '▼'}</span>
+                        <button class="btn-icon kw-delete" onclick="event.stopPropagation();removeItem('${panel.id}',${item.id})">✕</button>
+                    </span>
                 </div>
-                <textarea class="keyword-meaning meaning-textarea"
-                    rows="2"
-                    placeholder="${t('ph_meaning')}"
-                    onchange="saveMeaning(${item.id},${idx},this.value)"
-                    onblur="saveMeaning(${item.id},${idx},this.value)">${escHtml(item.extra || '')}</textarea>
+                ${isOpen ? /*html*/`
+                    <div class="kw-body">
+                        <textarea class="keyword-meaning"
+                            placeholder="${t('ph_meaning')}"
+                            onchange="saveMeaning(${item.id},${idx},this.value)"
+                            onblur="saveMeaning(${item.id},${idx},this.value)"
+                            >${escHtml(item.extra || '')}</textarea>
+                    </div>
+                ` : ''}
             </div>
         `;
     }).join('');
