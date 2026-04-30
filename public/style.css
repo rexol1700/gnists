@@ -373,18 +373,45 @@ ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
 
 /* ── KEYWORD MEANING ─────────────────────────────────────────────────────── */
 .keyword-meaning {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
     margin: 3px 0 6px 10px;
     padding: 5px 9px;
+    border: none;
     border-left: 2px solid var(--accent);
     color: var(--muted);
     font-size: 0.82rem;
+    font-family: var(--font);
+    line-height: 1.45;
     border-radius: 0 5px 5px 0;
     background: #6c63ff08;
     outline: none;
-    white-space: pre-wrap;
+    resize: none;
     cursor: text;
+    white-space: pre-wrap;
+    overflow: hidden;
 }
-.keyword-meaning:focus { color: var(--text); background: #6c63ff14; }
+.keyword-meaning:focus {
+    color: var(--fg, var(--text));
+    background: #6c63ff14;
+    border-left-width: 3px;
+}
+.keyword-meaning.meaning-empty {
+    background: transparent;
+    border-left-color: var(--border);
+    color: var(--muted);
+    opacity: 0.6;
+}
+.keyword-meaning.meaning-empty:focus {
+    background: #6c63ff08;
+    border-left-color: var(--accent);
+    opacity: 1;
+}
+.meaning-textarea {
+    /* auto-grow via JS if needed; min height = 2 rows */
+    min-height: 2.6em;
+}
 .meaning-input { margin-top: 3px; margin-bottom: 5px; font-size: 0.82rem; }
 
 /* ── TASKS ───────────────────────────────────────────────────────────────── */
