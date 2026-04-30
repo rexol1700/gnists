@@ -115,4 +115,13 @@ const PANEL_REGISTRY = [
         type: 'notes',
         span: 2,
     },
+    {
+        id: 'reminders',
+        icon: '🔔',
+        labelKey: 'sec_reminders',
+        phKey: 'ph_reminders',
+        emptyKey: 'empty_reminders',
+        type: 'reminders',
+        span: 1,
+    },
 ];

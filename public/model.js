@@ -15,6 +15,7 @@ const model = {
         selling:      [],  // [{ id, value, extra }]  extra = "price|status"
         shopping:     [],  // [{ id, value, extra }]  extra = "done" | ""
         notes:        [],  // [{ id, value, extra }]  extra = note body
+        reminders:    [],  // [{ id, value, extra }]  extra = due date
     },
     tasks: [], // [{ id, task, ischecked, subtasks: [{ id, task, ischecked }] }]
 

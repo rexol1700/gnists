@@ -41,11 +41,11 @@ const LANGS = {
         btn_logout:       'Logg ut',
 
         // Sections
-        sec_interests:    '💡 Interesser',
-        sec_questions:    '❓ Spørsmål',
-        sec_learning:     '🎯 Hva burde eksistere?',
-        sec_keywords:     '🔑 Nøkkelord',
-        sec_tasks:        '✅ Oppgaver',
+        sec_interests:    'Interesser',
+        sec_questions:    'Spørsmål',
+        sec_learning:     'Hva burde eksistere?',
+        sec_keywords:     'Nøkkelord',
+        sec_tasks:        'Oppgaver',
 
         // Inputs
         ph_interests:     'Legg til interesse…',
@@ -61,14 +61,14 @@ const LANGS = {
         btn_reset_all:    'Tøm alt',
 
         // Bills panel
-        sec_bills:        '💸 Kommende regninger',
+        sec_bills:        'Kommende regninger',
         ph_bills:         'Regningsmottaker…',
         ph_bill_amount:   'Beløp (valgfritt)',
         btn_add_bill:     'Legg til',
         empty_bills:      'Ingen regninger ennå…',
 
         // Times panel
-        sec_times:        '🕐 Tider',
+        sec_times:        'Tider',
         ph_times:         'Beskrivelse (f.eks. US market åpner)…',
         ph_times_time:    'Tid (f.eks. 14:30 / tirsdag 15:00)',
         ph_times_rec:     'Gjentakelse (f.eks. ukentlig)',
@@ -76,12 +76,12 @@ const LANGS = {
         empty_times:      'Ingen tider ennå…',
 
         // Motivations panel
-        sec_motivations:  '🔥 Motivasjon',
+        sec_motivations:  'Motivasjon',
         ph_motivations:   'Legg til motivasjon…',
         empty_motivations:'Ingen motivasjoner ennå…',
 
         // Selling panel
-        sec_selling:      '🏷️ Selge',
+        sec_selling:      'Selge',
         ph_selling:       'Hva selger du?',
         ph_selling_price: 'Pris (valgfritt)',
         btn_add_selling:  'Legg til',
@@ -91,15 +91,21 @@ const LANGS = {
         empty_selling:    'Ingenting til salgs ennå…',
 
         // Shopping panel
-        sec_shopping:     '🛒 Handleliste',
+        sec_shopping:     'Handleliste',
         ph_shopping:      'Legg til vare…',
         empty_shopping:   'Handlelisten er tom…',
 
         // Notes panel
-        sec_notes:        '📝 Notater',
+        sec_notes:        'Notater',
         ph_notes:         'Tittel på notat…',
         ph_note_body:     'Skriv notat her…',
         empty_notes:      'Ingen notater ennå…',
+
+        // Reminders / Huskeliste
+        sec_reminders:    'Huskeliste',
+        ph_reminders:     'Legg til påminnelse…',
+        btn_add_reminder: 'Legg til',
+        empty_reminders:  'Huskelisten er tom…',
 
         empty_list:       'Ingenting ennå…',
         empty_keywords:   'Ingen nøkkelord ennå…',
@@ -147,11 +153,11 @@ const LANGS = {
         btn_logout:       'Log out',
 
         // Sections
-        sec_interests:    '💡 Interests',
-        sec_questions:    '❓ Questions',
-        sec_learning:     '🎯 What should exist?',
-        sec_keywords:     '🔑 Keywords',
-        sec_tasks:        '✅ Tasks',
+        sec_interests:    'Interests',
+        sec_questions:    'Questions',
+        sec_learning:     'What should exist?',
+        sec_keywords:     'Keywords',
+        sec_tasks:        'Tasks',
 
         // Inputs
         ph_interests:     'Add an interest…',
@@ -167,14 +173,14 @@ const LANGS = {
         btn_reset_all:    'Clear everything',
 
         // Bills panel
-        sec_bills:        '💸 Upcoming bills',
+        sec_bills:        'Upcoming bills',
         ph_bills:         'Bill name…',
         ph_bill_amount:   'Amount (optional)',
         btn_add_bill:     'Add',
         empty_bills:      'No bills yet…',
 
         // Times panel
-        sec_times:        '🕐 Times',
+        sec_times:        'Times',
         ph_times:         'Description (e.g. US market opens)…',
         ph_times_time:    'Time (e.g. 14:30 / every Tuesday 15:00)',
         ph_times_rec:     'Recurrence (e.g. weekly)',
@@ -182,12 +188,12 @@ const LANGS = {
         empty_times:      'No times noted yet…',
 
         // Motivations panel
-        sec_motivations:  '🔥 Motivations',
+        sec_motivations:  'Motivations',
         ph_motivations:   'Add a motivation…',
         empty_motivations:'No motivations yet…',
 
         // Selling panel
-        sec_selling:      '🏷️ Selling',
+        sec_selling:      'Selling',
         ph_selling:       'What are you selling?',
         ph_selling_price: 'Price (optional)',
         btn_add_selling:  'Add',
@@ -197,15 +203,21 @@ const LANGS = {
         empty_selling:    'Nothing for sale yet…',
 
         // Shopping panel
-        sec_shopping:     '🛒 Shopping list',
+        sec_shopping:     'Shopping list',
         ph_shopping:      'Add item…',
         empty_shopping:   'Shopping list is empty…',
 
         // Notes panel
-        sec_notes:        '📝 Notes',
+        sec_notes:        'Notes',
         ph_notes:         'Note title…',
         ph_note_body:     'Write your note here…',
         empty_notes:      'No notes yet…',
+
+        // Reminders
+        sec_reminders:    'Reminders',
+        ph_reminders:     'Add a reminder…',
+        btn_add_reminder: 'Add',
+        empty_reminders:  'No reminders yet…',
 
         empty_list:       'Nothing here yet…',
         empty_keywords:   'No keywords yet…',

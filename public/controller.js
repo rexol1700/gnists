@@ -39,7 +39,7 @@ async function doRegister(username, password, errorEl) {
 
 function doLogout() {
     API.logout();
-    model.lists = { interests: [], questions: [], learningGoals: [], Nøkkelord: [], bills: [], times: [], motivations: [], selling: [], shopping: [], notes: [] };
+    model.lists = { interests: [], questions: [], learningGoals: [], Nøkkelord: [], bills: [], times: [], motivations: [], selling: [], shopping: [], notes: [], reminders: [] };
     model.tasks = [];
     changePage('landing');
 }
@@ -59,6 +59,7 @@ async function loadData() {
         model.lists.selling       = data.lists.selling       || [];
         model.lists.shopping      = data.lists.shopping      || [];
         model.lists.notes         = data.lists.notes         || [];
+        model.lists.reminders     = data.lists.reminders     || [];
         model.tasks = data.tasks || [];
         model.page = 'home';
     } catch (err) {
@@ -106,6 +107,7 @@ async function resetAll() {
             API.resetList('selling'),
             API.resetList('shopping'),
             API.resetList('notes'),
+            API.resetList('reminders'),
             API.resetList('tasks'),
         ]);
         model.lists.interests     = [];
@@ -118,6 +120,7 @@ async function resetAll() {
         model.lists.selling       = [];
         model.lists.shopping      = [];
         model.lists.notes         = [];
+        model.lists.reminders     = [];
         model.tasks               = [];
         updateView();
         toast(lang === 'no' ? 'Alt tømt' : 'All cleared');
@@ -298,7 +301,23 @@ function removeBill(id) {
         .catch(err => toast(err.message, 'error'));
 }
 
-// ── LANG SWITCHER (shared by all views) ──────────────────────────────────────
+// ── REMINDERS ─────────────────────────────────────────────────────────────────
+
+function addReminder(listId) {
+    const textEl = document.getElementById('reminders-text-input');
+    const dateEl = document.getElementById('reminders-date-input');
+    const text   = textEl?.value.trim();
+    if (!text) return;
+    const extra = dateEl?.value || '';
+    textEl.value = '';
+    if (dateEl) dateEl.value = '';
+    API.addItem(listId, text, extra)
+        .then(res => {
+            model.lists[listId].push({ id: res.id, value: text, extra });
+            updateView();
+        })
+        .catch(err => toast(err.message, 'error'));
+}
 
 function langSwitcher() {
     return /*html*/`

@@ -268,6 +268,36 @@ function renderNotesPanelInput(panel) {
     `;
 }
 
+// ── reminders ─────────────────────────────────────────────────────────────────
+// Huskeliste: { id, value, extra }  value = reminder text, extra = due date or ''
+function renderRemindersPanel(panel) {
+    const items = model.lists[panel.id] || [];
+    if (!items.length) return `<p class="empty-msg">${t(panel.emptyKey)}</p>`;
+    const today = new Date().toISOString().slice(0, 10);
+    return items.map(item => {
+        const due = item.extra || '';
+        const isPast = due && due < today;
+        const isToday = due === today;
+        return /*html*/`
+            <div class="reminder-item ${isPast ? 'reminder-past' : ''} ${isToday ? 'reminder-today' : ''}">
+                <span class="reminder-text">${escHtml(item.value)}</span>
+                ${due ? `<span class="reminder-date ${isPast ? 'overdue' : isToday ? 'today' : ''}">${due}</span>` : ''}
+                <button class="btn-icon" onclick="removeItem('${panel.id}',${item.id})">✕</button>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderRemindersPanelInput(panel) {
+    return /*html*/`
+        <div class="reminders-add-row">
+            <input class="add-input reminders-text-input" id="reminders-text-input" placeholder="${t(panel.phKey)}">
+            <input class="add-input reminders-date-input" id="reminders-date-input" type="date">
+            <button class="btn btn-add-reminder" onclick="addReminder('${panel.id}')">${t('btn_add_reminder')}</button>
+        </div>
+    `;
+}
+
 // ── DISPATCHER ────────────────────────────────────────────────────────────────
 // Returns [bodyHtml, inputHtml] for any panel type.
 function renderPanelContent(panel) {
@@ -311,6 +341,11 @@ function renderPanelContent(panel) {
             return [
                 renderNotesPanel(panel),
                 renderNotesPanelInput(panel),
+            ];
+        case 'reminders':
+            return [
+                renderRemindersPanel(panel),
+                renderRemindersPanelInput(panel),
             ];
         default:
             return [`<p class="empty-msg">Unknown panel type: ${panel.type}</p>`, ''];
