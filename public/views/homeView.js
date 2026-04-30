@@ -6,7 +6,6 @@ function homeView() {
 
     const boardRows = rows.map((row, rIdx) => renderTileRow(row, rIdx)).join('');
     const dropZone = renderBottomDropZone();
-    const addSlot = renderAddPanelSlot();
 
     return /*html*/`
     <div class="topbar">
@@ -27,7 +26,6 @@ function homeView() {
     <div class="tile-board" id="tile-board">
         ${boardRows}
         ${dropZone}
-        ${addSlot}
     </div>
     `;
 }
@@ -35,10 +33,13 @@ function homeView() {
 // ── ROW RENDERING ─────────────────────────────────────────────────────────────
 
 function renderTileRow(row, rIdx) {
+    // Row 0 always gets the add-panel slot as its last cell
+    const addSlot = rIdx === 0 ? renderAddPanelInRow() : '';
     const cells = row.map((cell, cIdx) => renderTileCell(cell, rIdx, cIdx, row)).join('');
     return /*html*/`
         <div class="tile-row" data-row="${rIdx}">
             ${cells}
+            ${addSlot}
         </div>
     `;
 }
@@ -112,17 +113,16 @@ function renderBottomDropZone() {
         </div>
     `;
 }
+// ── ADD PANEL IN ROW 0 ───────────────────────────────────────────────────────
 
-// ── ADD PANEL SLOT ────────────────────────────────────────────────────────────
-
-function renderAddPanelSlot() {
+function renderAddPanelInRow() {
     const inactive = layoutGetInactive();
     if (!inactive.length) return '';
     const isOpen = model.addPanelOpen;
 
-    const picker = isOpen ? /*html*/`
+    const picker = isOpen ? `
         <div class="add-panel-picker">
-            ${inactive.map(p => /*html*/`
+            ${inactive.map(p => `
                 <button class="add-panel-option" onclick="layoutAddPanel('${p.id}')">
                     <span class="apo-icon">${p.icon}</span>
                     <span class="apo-label">${t(p.labelKey)}</span>
@@ -131,17 +131,21 @@ function renderAddPanelSlot() {
         </div>
     ` : '';
 
-    return /*html*/`
-        <div class="tile-add-slot ${isOpen ? 'open' : ''}" onclick="${isOpen ? '' : 'toggleAddPanel()'}">
-            <button class="add-panel-btn ${isOpen ? 'open' : ''}"
-                    onclick="event.stopPropagation(); toggleAddPanel()">
-                <span class="add-panel-cross">+</span>
-            </button>
-            <div class="add-panel-label ${isOpen ? '' : 'muted'}">${isOpen
-                ? (lang === 'no' ? 'Velg panel' : 'Choose panel')
-                : (lang === 'no' ? 'Legg til panel' : 'Add panel')
-            }</div>
-            ${picker}
+    return `
+        <div class="tile-panel tile-add-panel ${isOpen ? 'open' : ''}"
+             style="flex: 1 1 0%; min-width: 80px;"
+             onclick="${isOpen ? '' : 'toggleAddPanel()}">
+            <div class="tile-panel-inner tile-add-inner">
+                <button class="add-panel-btn ${isOpen ? 'open' : ''}"
+                        onclick="event.stopPropagation(); toggleAddPanel()">
+                    <span class="add-panel-cross">+</span>
+                </button>
+                <div class="add-panel-label ${isOpen ? '' : 'muted'}">${isOpen
+                    ? (lang === 'no' ? 'Velg panel' : 'Choose panel')
+                    : (lang === 'no' ? 'Legg til' : 'Add panel')
+                }</div>
+                ${picker}
+            </div>
         </div>
     `;
 }

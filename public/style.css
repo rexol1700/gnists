@@ -162,7 +162,7 @@ body.tile-resizing .tile-resize-handle { pointer-events: all; }
 .tile-edge {
     position: absolute;
     z-index: 20;
-    pointer-events: all;
+    pointer-events: none;
     transition: background 0.1s, opacity 0.1s;
     opacity: 0;
 }
@@ -171,8 +171,8 @@ body.tile-resizing .tile-resize-handle { pointer-events: all; }
 .tile-edge-top    { left: 22%; top: 0;   width: 56%;  height: 25%; cursor: n-resize; }
 .tile-edge-bottom { left: 22%; bottom: 0; width: 56%; height: 25%; cursor: s-resize; }
 
-/* Show edge hint when something is being dragged (via .tile-dragging on board) */
-.tile-board.drag-active .tile-edge { opacity: 1; }
+/* Only show + activate edges while something is being dragged */
+.tile-board.drag-active .tile-edge { opacity: 1; pointer-events: all; }
 .tile-edge-active {
     background: #6c63ff22 !important;
     border: 2px solid var(--accent) !important;
@@ -223,27 +223,24 @@ body.tile-resizing .tile-resize-handle { pointer-events: all; }
 }
 .tile-bottom-drop.active .tile-bottom-drop-label { color: var(--accent); }
 
-/* ── ADD PANEL SLOT ──────────────────────────────────────────────────────── */
-.tile-add-slot {
-    flex-shrink: 0;
-    padding: 8px 14px;
-    background: transparent;
-    border-top: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    gap: 10px;
+/* ── ADD PANEL TILE (lives in row 0 as last cell) ────────────────────────── */
+.tile-add-panel {
+    background: var(--bg);
+    border-left: 1px solid var(--border);
     cursor: pointer;
     transition: background 0.15s;
-    min-height: 44px;
 }
-.tile-add-slot:hover { background: #6c63ff08; }
-.tile-add-slot.open {
+.tile-add-panel:hover { background: #6c63ff08; }
+.tile-add-panel.open {
     background: #6c63ff0d;
-    border-color: var(--accent);
     cursor: default;
-    align-items: flex-start;
+}
+.tile-add-inner {
+    display: flex;
     flex-direction: column;
-    padding: 10px 14px;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 8px;
 }
 
 /* ── PANEL HEADER ────────────────────────────────────────────────────────── */
@@ -500,11 +497,9 @@ body.lightmode .bill-date-input { color-scheme: light; }
 
 .add-panel-picker {
     display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: 5px;
     width: 100%;
-    margin-top: 8px;
     animation: fadeUp 0.15s ease;
 }
 
