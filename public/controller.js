@@ -165,12 +165,11 @@ function editKeyword(index) {
 
 async function saveMeaning(id, listIndex, value) {
     const item = model.lists.Nøkkelord[listIndex];
-    if (!item || item.extra === value) return; // no change, skip
+    if (!item) return;
+    if (item.extra === value) return; // no change
+    item.extra = value;
     try {
         await API.updateItem(id, { extra: value });
-        item.extra = value;
-        // Don't reset editingIndex — user may still be in the textarea.
-        // The textarea will keep its content since it's always rendered now.
     } catch (err) {
         toast(err.message, 'error');
     }

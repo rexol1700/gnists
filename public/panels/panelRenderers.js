@@ -27,39 +27,19 @@ function renderKeywordsPanel(panel) {
     const items = model.lists[panel.id] || [];
     if (!items.length) return `<li class="empty-msg">${t(panel.emptyKey)}</li>`;
     return items.map((item, idx) => {
-        const isEditing = model.editingIndex === idx;
-        let html = /*html*/`
-            <div class="item-row">
-                <li ondblclick="editKeyword(${idx})" title="${lang === 'no' ? 'Dobbeltklikk for å redigere' : 'Double-click to edit'}">${escHtml(item.value)}</li>
-                <button class="btn-icon" onclick="removeItem('${panel.id}',${item.id})">✕</button>
-            </div>
-        `;
-        if (isEditing) {
-            html += /*html*/`
-                <textarea class="add-input meaning-input meaning-textarea"
-                    placeholder="${t('ph_meaning')}"
-                    onblur="saveMeaning(${item.id},${idx},this.value)"
-                    onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();saveMeaning(${item.id},${idx},this.value)}"
-                    autofocus
-                    rows="2">${escHtml(item.extra)}</textarea>
-            `;
-        } else if (item.extra) {
-            html += /*html*/`
+        return /*html*/`
+            <div class="keyword-block">
+                <div class="item-row">
+                    <li class="keyword-word">${escHtml(item.value)}</li>
+                    <button class="btn-icon" onclick="removeItem('${panel.id}',${item.id})">✕</button>
+                </div>
                 <textarea class="keyword-meaning meaning-textarea"
                     rows="2"
-                    onblur="saveMeaning(${item.id},${idx},this.value)"
-                    onfocus="model.editingIndex=${idx}">${escHtml(item.extra)}</textarea>
-            `;
-        } else {
-            html += /*html*/`
-                <textarea class="keyword-meaning meaning-textarea meaning-empty"
-                    rows="1"
                     placeholder="${t('ph_meaning')}"
-                    onblur="saveMeaning(${item.id},${idx},this.value)"
-                    onfocus="model.editingIndex=${idx}"></textarea>
-            `;
-        }
-        return html;
+                    onchange="saveMeaning(${item.id},${idx},this.value)"
+                    onblur="saveMeaning(${item.id},${idx},this.value)">${escHtml(item.extra || '')}</textarea>
+            </div>
+        `;
     }).join('');
 }
 
