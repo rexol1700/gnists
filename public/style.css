@@ -831,3 +831,136 @@ body.lightmode .bill-date-input { color-scheme: light; }
 }
 
 .auth-switch a:hover { opacity: 0.8; }
+
+/* ── TIMES PANEL ─────────────────────────────────────────────────────────── */
+.times-add-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.times-add-row .add-input { flex: 1; min-width: 80px; }
+.btn-add-time { white-space: nowrap; }
+
+.time-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+.time-badge {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+}
+.time-label {
+    flex: 1;
+    font-size: 0.9rem;
+}
+.time-recurrence {
+    font-size: 0.74rem;
+    color: var(--muted);
+    background: var(--bg);
+    border-radius: 4px;
+    padding: 1px 5px;
+}
+
+/* ── SELLING PANEL ───────────────────────────────────────────────────────── */
+.selling-add-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.selling-add-row .add-input { flex: 1; min-width: 80px; }
+
+.selling-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 4px;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+}
+.selling-item.sold .selling-name {
+    text-decoration: line-through;
+    opacity: 0.5;
+}
+.selling-item.pending .selling-name { color: var(--accent); }
+
+.selling-name { flex: 1; font-size: 0.9rem; }
+.selling-meta { display: flex; align-items: center; gap: 6px; }
+.selling-price {
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--accent);
+}
+.selling-status-select {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--fg);
+    font-size: 0.75rem;
+    padding: 2px 4px;
+    cursor: pointer;
+}
+
+/* ── SHOPPING PANEL ──────────────────────────────────────────────────────── */
+.shopping-list { list-style: none; padding: 0; margin: 0; }
+.shopping-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--border);
+}
+.shopping-item input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; }
+.shopping-label { flex: 1; font-size: 0.9rem; transition: opacity 0.2s; }
+.shopping-item.checked .shopping-label {
+    text-decoration: line-through;
+    opacity: 0.4;
+}
+
+/* ── NOTES PANEL ─────────────────────────────────────────────────────────── */
+.note-item {
+    border-bottom: 1px solid var(--border);
+    padding: 4px 0;
+}
+.note-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    padding: 6px 4px;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+.note-header:hover { background: var(--bg); }
+.note-title { flex: 1; font-weight: 600; font-size: 0.9rem; }
+.note-toggle { font-size: 0.72rem; color: var(--muted); }
+.note-body {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--fg);
+    font-family: var(--font);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    padding: 8px 10px;
+    margin-top: 4px;
+    resize: vertical;
+}
+.note-body:focus { outline: 2px solid var(--accent); border-color: transparent; }
+.note-preview {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin: 2px 4px 4px;
+    line-height: 1.4;
+}

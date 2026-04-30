@@ -39,7 +39,7 @@ async function doRegister(username, password, errorEl) {
 
 function doLogout() {
     API.logout();
-    model.lists = { interests: [], questions: [], learningGoals: [], Nøkkelord: [], bills: [] };
+    model.lists = { interests: [], questions: [], learningGoals: [], Nøkkelord: [], bills: [], times: [], motivations: [], selling: [], shopping: [], notes: [] };
     model.tasks = [];
     changePage('landing');
 }
@@ -54,6 +54,11 @@ async function loadData() {
         model.lists.learningGoals = data.lists.learningGoals || [];
         model.lists.Nøkkelord     = data.lists.Nøkkelord     || [];
         model.lists.bills         = data.lists.bills         || [];
+        model.lists.times         = data.lists.times         || [];
+        model.lists.motivations   = data.lists.motivations   || [];
+        model.lists.selling       = data.lists.selling       || [];
+        model.lists.shopping      = data.lists.shopping      || [];
+        model.lists.notes         = data.lists.notes         || [];
         model.tasks = data.tasks || [];
         model.page = 'home';
     } catch (err) {
@@ -96,6 +101,11 @@ async function resetAll() {
             API.resetList('learningGoals'),
             API.resetList('Nøkkelord'),
             API.resetList('bills'),
+            API.resetList('times'),
+            API.resetList('motivations'),
+            API.resetList('selling'),
+            API.resetList('shopping'),
+            API.resetList('notes'),
             API.resetList('tasks'),
         ]);
         model.lists.interests     = [];
@@ -103,6 +113,11 @@ async function resetAll() {
         model.lists.learningGoals = [];
         model.lists.Nøkkelord     = [];
         model.lists.bills         = [];
+        model.lists.times         = [];
+        model.lists.motivations   = [];
+        model.lists.selling       = [];
+        model.lists.shopping      = [];
+        model.lists.notes         = [];
         model.tasks               = [];
         updateView();
         toast(lang === 'no' ? 'Alt tømt' : 'All cleared');
@@ -292,4 +307,78 @@ function langSwitcher() {
             <button class="lang-btn ${lang === 'en' ? 'active' : ''}" onclick="setLang('en')">🇬🇧 EN</button>
         </div>
     `;
+}
+
+// ── TIMES ─────────────────────────────────────────────────────────────────────
+
+function addTimeEntry(listId) {
+    const labelEl = document.getElementById('times-label-input');
+    const timeEl  = document.getElementById('times-time-input');
+    const recEl   = document.getElementById('times-rec-input');
+    const label   = labelEl?.value.trim();
+    if (!label) return;
+    const extra = `${timeEl?.value.trim() || ''}|${recEl?.value.trim() || ''}`;
+    labelEl.value = '';
+    if (timeEl) timeEl.value = '';
+    if (recEl)  recEl.value  = '';
+    API.addItem(listId, label, extra)
+        .then(res => {
+            model.lists[listId].push({ id: res.id, value: label, extra });
+            updateView();
+        })
+        .catch(err => toast(err.message, 'error'));
+}
+
+// ── SELLING ───────────────────────────────────────────────────────────────────
+
+function addSellingItem(listId) {
+    const nameEl  = document.getElementById('selling-name-input');
+    const priceEl = document.getElementById('selling-price-input');
+    const name    = nameEl?.value.trim();
+    if (!name) return;
+    const extra = `${priceEl?.value.trim() || ''}|listed`;
+    nameEl.value = '';
+    if (priceEl) priceEl.value = '';
+    API.addItem(listId, name, extra)
+        .then(res => {
+            model.lists[listId].push({ id: res.id, value: name, extra });
+            updateView();
+        })
+        .catch(err => toast(err.message, 'error'));
+}
+
+function updateSellingStatus(id, listId, newStatus) {
+    const item = model.lists[listId]?.find(i => i.id === id);
+    if (!item) return;
+    const [price = ''] = (item.extra || '').split('|');
+    item.extra = `${price}|${newStatus}`;
+    API.updateItem(id, { extra: item.extra })
+        .then(() => updateView())
+        .catch(err => toast(err.message, 'error'));
+}
+
+// ── SHOPPING ──────────────────────────────────────────────────────────────────
+
+function toggleShoppingItem(id, listId, checked) {
+    const item = model.lists[listId]?.find(i => i.id === id);
+    if (!item) return;
+    item.extra = checked ? 'done' : '';
+    API.updateItem(id, { extra: item.extra })
+        .then(() => updateView())
+        .catch(err => toast(err.message, 'error'));
+}
+
+// ── NOTES ─────────────────────────────────────────────────────────────────────
+
+function toggleNote(id) {
+    model.expandedNote = model.expandedNote === id ? null : id;
+    updateView();
+}
+
+function saveNoteBody(id, listId, value) {
+    const item = model.lists[listId]?.find(i => i.id === id);
+    if (!item) return;
+    item.extra = value;
+    API.updateItem(id, { extra: value })
+        .catch(err => toast(err.message, 'error'));
 }

@@ -61,7 +61,6 @@ const PANEL_REGISTRY = [
     },
 
     // ── ADD NEW PANEL TYPES BELOW ──────────────────────────────────────────
-    // Example: bills panel (uncomment or copy the pattern)
     {
         id: 'bills',
         icon: '💸',
@@ -70,5 +69,50 @@ const PANEL_REGISTRY = [
         emptyKey: 'empty_bills',
         type: 'bills',
         span: 1,
+    },
+    {
+        id: 'times',
+        icon: '🕐',
+        labelKey: 'sec_times',
+        phKey: 'ph_times',
+        emptyKey: 'empty_times',
+        type: 'times',
+        span: 1,
+    },
+    {
+        id: 'motivations',
+        icon: '🔥',
+        labelKey: 'sec_motivations',
+        phKey: 'ph_motivations',
+        emptyKey: 'empty_motivations',
+        type: 'simple',
+        span: 1,
+    },
+    {
+        id: 'selling',
+        icon: '🏷️',
+        labelKey: 'sec_selling',
+        phKey: 'ph_selling',
+        emptyKey: 'empty_selling',
+        type: 'selling',
+        span: 1,
+    },
+    {
+        id: 'shopping',
+        icon: '🛒',
+        labelKey: 'sec_shopping',
+        phKey: 'ph_shopping',
+        emptyKey: 'empty_shopping',
+        type: 'shopping',
+        span: 1,
+    },
+    {
+        id: 'notes',
+        icon: '📝',
+        labelKey: 'sec_notes',
+        phKey: 'ph_notes',
+        emptyKey: 'empty_notes',
+        type: 'notes',
+        span: 2,
     },
 ];

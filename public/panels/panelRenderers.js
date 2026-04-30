@@ -148,6 +148,126 @@ function renderBillsPanelInput(panel) {
     `;
 }
 
+// ── times ─────────────────────────────────────────────────────────────────────
+function renderTimesPanel(panel) {
+    const items = model.lists[panel.id] || [];
+    if (!items.length) return `<p class="empty-msg">${t(panel.emptyKey)}</p>`;
+    return items.map(item => {
+        const [time = '', recurrence = ''] = (item.extra || '').split('|');
+        return /*html*/`
+            <div class="time-item">
+                <span class="time-badge">${escHtml(time)}</span>
+                <span class="time-label">${escHtml(item.value)}</span>
+                ${recurrence ? `<span class="time-recurrence">${escHtml(recurrence)}</span>` : ''}
+                <button class="btn-icon" onclick="removeItem('${panel.id}',${item.id})">✕</button>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderTimesPanelInput(panel) {
+    return /*html*/`
+        <div class="times-add-row">
+            <input class="add-input times-label-input" id="times-label-input" placeholder="${t(panel.phKey)}">
+            <input class="add-input times-time-input" id="times-time-input" placeholder="${t('ph_times_time')}">
+            <input class="add-input times-rec-input" id="times-rec-input" placeholder="${t('ph_times_rec')}">
+            <button class="btn btn-add-time" onclick="addTimeEntry('${panel.id}')">${t('btn_add_time')}</button>
+        </div>
+    `;
+}
+
+// ── selling ───────────────────────────────────────────────────────────────────
+function renderSellingPanel(panel) {
+    const items = model.lists[panel.id] || [];
+    if (!items.length) return `<p class="empty-msg">${t(panel.emptyKey)}</p>`;
+    return items.map(item => {
+        const [price = '', status = 'listed'] = (item.extra || '').split('|');
+        const statusClass = status === 'sold' ? 'sold' : status === 'pending' ? 'pending' : 'listed';
+        return /*html*/`
+            <div class="selling-item ${statusClass}">
+                <span class="selling-name">${escHtml(item.value)}</span>
+                <span class="selling-meta">
+                    ${price ? `<span class="selling-price">${escHtml(price)}</span>` : ''}
+                    <select class="selling-status-select" onchange="updateSellingStatus(${item.id}, '${panel.id}', this.value)">
+                        <option value="listed" ${status === 'listed' ? 'selected' : ''}>${t('sell_listed')}</option>
+                        <option value="pending" ${status === 'pending' ? 'selected' : ''}>${t('sell_pending')}</option>
+                        <option value="sold" ${status === 'sold' ? 'selected' : ''}>${t('sell_sold')}</option>
+                    </select>
+                </span>
+                <button class="btn-icon" onclick="removeItem('${panel.id}',${item.id})">✕</button>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderSellingPanelInput(panel) {
+    return /*html*/`
+        <div class="selling-add-row">
+            <input class="add-input selling-name-input" id="selling-name-input" placeholder="${t(panel.phKey)}">
+            <input class="add-input selling-price-input" id="selling-price-input" placeholder="${t('ph_selling_price')}">
+            <button class="btn btn-add-selling" onclick="addSellingItem('${panel.id}')">${t('btn_add_selling')}</button>
+        </div>
+    `;
+}
+
+// ── shopping ──────────────────────────────────────────────────────────────────
+function renderShoppingPanel(panel) {
+    const items = model.lists[panel.id] || [];
+    if (!items.length) return `<p class="empty-msg">${t(panel.emptyKey)}</p>`;
+    return /*html*/`
+        <ul class="shopping-list">
+            ${items.map(item => {
+                const checked = item.extra === 'done';
+                return /*html*/`
+                    <div class="shopping-item ${checked ? 'checked' : ''}">
+                        <input type="checkbox" ${checked ? 'checked' : ''}
+                            onchange="toggleShoppingItem(${item.id}, '${panel.id}', this.checked)">
+                        <span class="shopping-label">${escHtml(item.value)}</span>
+                        <button class="btn-icon" onclick="removeItem('${panel.id}',${item.id})">✕</button>
+                    </div>
+                `;
+            }).join('')}
+        </ul>
+    `;
+}
+
+function renderShoppingPanelInput(panel) {
+    return /*html*/`
+        <input class="add-input" placeholder="${t(panel.phKey)}"
+            onkeydown="if(event.key==='Enter') addItem('${panel.id}',this)">
+    `;
+}
+
+// ── notes ─────────────────────────────────────────────────────────────────────
+function renderNotesPanel(panel) {
+    const items = model.lists[panel.id] || [];
+    if (!items.length) return `<p class="empty-msg">${t(panel.emptyKey)}</p>`;
+    return items.map(item => {
+        const isOpen = model.expandedNote === item.id;
+        return /*html*/`
+            <div class="note-item">
+                <div class="note-header" onclick="toggleNote(${item.id})">
+                    <span class="note-title">${escHtml(item.value)}</span>
+                    <span class="note-toggle">${isOpen ? '▲' : '▼'}</span>
+                    <button class="btn-icon" onclick="event.stopPropagation();removeItem('${panel.id}',${item.id})">✕</button>
+                </div>
+                ${isOpen ? /*html*/`
+                    <textarea class="note-body" rows="4"
+                        placeholder="${t('ph_note_body')}"
+                        onblur="saveNoteBody(${item.id}, '${panel.id}', this.value)">${escHtml(item.extra || '')}</textarea>
+                ` : (item.extra ? `<p class="note-preview">${escHtml(item.extra.slice(0, 80))}${item.extra.length > 80 ? '…' : ''}</p>` : '')}
+            </div>
+        `;
+    }).join('');
+}
+
+function renderNotesPanelInput(panel) {
+    return /*html*/`
+        <input class="add-input" placeholder="${t(panel.phKey)}"
+            onkeydown="if(event.key==='Enter') addItem('${panel.id}',this)">
+    `;
+}
+
 // ── DISPATCHER ────────────────────────────────────────────────────────────────
 // Returns [bodyHtml, inputHtml] for any panel type.
 function renderPanelContent(panel) {
@@ -171,6 +291,26 @@ function renderPanelContent(panel) {
             return [
                 renderBillsPanel(panel),
                 renderBillsPanelInput(panel),
+            ];
+        case 'times':
+            return [
+                renderTimesPanel(panel),
+                renderTimesPanelInput(panel),
+            ];
+        case 'selling':
+            return [
+                renderSellingPanel(panel),
+                renderSellingPanelInput(panel),
+            ];
+        case 'shopping':
+            return [
+                renderShoppingPanel(panel),
+                renderShoppingPanelInput(panel),
+            ];
+        case 'notes':
+            return [
+                renderNotesPanel(panel),
+                renderNotesPanelInput(panel),
             ];
         default:
             return [`<p class="empty-msg">Unknown panel type: ${panel.type}</p>`, ''];
