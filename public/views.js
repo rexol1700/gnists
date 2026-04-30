@@ -15,7 +15,7 @@ function updateView() {
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 
-model.boardLayout = layoutLoad();
+model.tileLayout = layoutLoad();
 updateView();
 
 if (API.isLoggedIn()) {

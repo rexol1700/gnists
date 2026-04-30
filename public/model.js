@@ -18,5 +18,6 @@ const model = {
     expandedTask: null,   // which task panel is open
     isLightmode: false,
     addPanelOpen: false,  // is the add-panel picker open?
-    boardLayout: [],      // ordered panel IDs — populated by layoutLoad() at boot
+    boardManage: false,
+    tileLayout: [],       // 2D array of rows: [[{id,flex},...], ...]  — loaded by layoutLoad()
 };
