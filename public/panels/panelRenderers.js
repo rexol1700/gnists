@@ -48,6 +48,7 @@ function renderKeywordsPanel(panel) {
                             placeholder="${t('ph_meaning')}"
                             onchange="saveMeaning(${item.id},${idx},this.value)"
                             onblur="saveMeaning(${item.id},${idx},this.value)"
+                            oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
                             >${escHtml(item.extra || '')}</textarea>
                     </div>
                 ` : ''}

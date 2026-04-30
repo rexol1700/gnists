@@ -476,8 +476,8 @@ ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
     border-radius: 0 6px 6px 0;
     background: color-mix(in srgb, var(--accent) 4%, var(--surface));
     outline: none;
-    resize: vertical;
-    min-height: 5em;
+    resize: none;
+    overflow: hidden;
     transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
 }
 .keyword-meaning:focus {

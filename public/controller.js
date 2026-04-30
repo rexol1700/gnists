@@ -161,6 +161,13 @@ async function addKeyword(inputEl) {
 function editKeyword(index) {
     model.editingIndex = model.editingIndex === index ? null : index;
     updateView();
+    // After render, auto-fit any open keyword textarea
+    requestAnimationFrame(() => {
+        document.querySelectorAll('.keyword-meaning').forEach(el => {
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+        });
+    });
 }
 
 async function saveMeaning(id, listIndex, value) {
