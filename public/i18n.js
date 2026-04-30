@@ -59,6 +59,13 @@ const LANGS = {
         // Buttons
         btn_clear:        '⟲ Tøm',
         btn_reset_all:    'Tøm alt',
+
+        // Bills panel
+        sec_bills:        '💸 Kommende regninger',
+        ph_bills:         'Regningsmottaker…',
+        ph_bill_amount:   'Beløp (valgfritt)',
+        btn_add_bill:     'Legg til',
+        empty_bills:      'Ingen regninger ennå…',
         empty_list:       'Ingenting ennå…',
         empty_keywords:   'Ingen nøkkelord ennå…',
         empty_tasks:      'Ingen oppgaver ennå…',
@@ -123,6 +130,13 @@ const LANGS = {
         // Buttons
         btn_clear:        '⟲ Clear',
         btn_reset_all:    'Clear everything',
+
+        // Bills panel
+        sec_bills:        '💸 Upcoming bills',
+        ph_bills:         'Bill name…',
+        ph_bill_amount:   'Amount (optional)',
+        btn_add_bill:     'Add',
+        empty_bills:      'No bills yet…',
         empty_list:       'Nothing here yet…',
         empty_keywords:   'No keywords yet…',
         empty_tasks:      'No tasks yet…',

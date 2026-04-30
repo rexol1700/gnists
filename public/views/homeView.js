@@ -1,5 +1,11 @@
+// ── HOME VIEW ─────────────────────────────────────────────────────────────────
+// Renders the board by looping over PANEL_REGISTRY.
+// To add, remove, or reorder panels — edit panelRegistry.js only.
+
 function homeView() {
     const lightOn = model.isLightmode;
+    const boardPanels = PANEL_REGISTRY.map(panel => renderPanel(panel)).join('');
+
     return /*html*/`
     <div class="topbar">
         <span class="topbar-title">Gnists ✦</span>
@@ -17,69 +23,28 @@ function homeView() {
     </div>
 
     <div class="board">
-
-        <!-- Row 1: Questions (wide) | Tasks -->
-        <div class="panel" style="grid-column: span 2;">
-            <div class="panel-header">
-                <span class="panel-title">${t('sec_questions')}</span>
-                <button class="btn-reset"
-                    onclick="spinReset('questions', this)" title="${t('btn_clear')}">↺</button>
-            </div>
-            <input class="add-input" placeholder="${t('ph_questions')}"
-                onkeydown="if(event.key==='Enter') addItem('questions',this)">
-            <div class="panel-scroll"><ul>${renderSimpleList('questions')}</ul></div>
-            
-        </div>
-
-
-        <div class="panel">
-            <div class="panel-header">
-                <span class="panel-title">${t('sec_keywords')}</span>
-                <button class="btn-reset"
-                    onclick="spinReset('Nøkkelord', this)" title="${t('btn_clear')}">↺</button>
-            </div>
-            <input class="add-input" placeholder="${t('ph_keywords')}"
-                onkeydown="if(event.key==='Enter') addKeyword(this)">
-            <div class="panel-scroll"><ul>${renderKeywords()}</ul></div>
-        </div>
-        
-        <!-- Row 2: Interests | Learning | Keywords -->
-        <div class="panel">
-            <div class="panel-header">
-                <span class="panel-title">${t('sec_interests')}</span>
-                <button class="btn-reset" id="reset-interests"
-                    onclick="spinReset('interests', this)" title="${t('btn_clear')}">↺</button>
-            </div>
-            <input class="add-input" placeholder="${t('ph_interests')}"
-                onkeydown="if(event.key==='Enter') addItem('interests',this)">
-            <div class="panel-scroll"><ul>${renderSimpleList('interests')}</ul></div>
-        </div>
-
-        <div class="panel">
-            <div class="panel-header">
-                <span class="panel-title">${t('sec_learning')}</span>
-                <button class="btn-reset"
-                    onclick="spinReset('learningGoals', this)" title="${t('btn_clear')}">↺</button>
-            </div>
-            <input class="add-input" placeholder="${t('ph_learning')}"
-                onkeydown="if(event.key==='Enter') addItem('learningGoals',this)">
-            <div class="panel-scroll"><ul>${renderSimpleList('learningGoals')}</ul></div>
-        </div>
-
-        <div class="panel">
-            <div class="panel-header">
-                <span class="panel-title">${t('sec_tasks')}</span>
-                <button class="btn-reset"
-                    onclick="spinReset('learningGoals', this)" title="${t('btn_clear')}">↺</button>
-            </div>
-            <input class="add-input" placeholder="${t('ph_tasks')}"
-                onkeydown="if(event.key==='Enter') addTask(this)">
-            <div class="panel-scroll">${renderTasks()}</div>
-        </div>
-
-        
-
+        ${boardPanels}
     </div>
+    `;
+}
+
+// ── PANEL SHELL ───────────────────────────────────────────────────────────────
+// Wraps any panel definition in the standard chrome (header, input, scroll area).
+
+function renderPanel(panel) {
+    const spanStyle = panel.span > 1 ? `style="grid-column: span ${panel.span};"` : '';
+    const [bodyHtml, inputHtml] = renderPanelContent(panel);
+
+    return /*html*/`
+        <div class="panel" ${spanStyle}>
+            <div class="panel-header">
+                <span class="panel-title">${t(panel.labelKey)}</span>
+                <button class="btn-reset"
+                    onclick="spinReset('${panel.id}', this)" title="${t('btn_clear')}">↺</button>
+            </div>
+            ${inputHtml}
+            <div class="panel-scroll">${bodyHtml}</div>
+        </div>
     `;
 }
 
@@ -87,22 +52,22 @@ function homeView() {
 function langSwitcher() {
     return /*html*/`
         <div class="lang-switcher">
-            <button class="lang-btn ${lang === 'no' ? 'active' : ''}" onclick="setLang('no')">🇳🇴 NO</button>
-            <button class="lang-btn ${lang === 'en' ? 'active' : ''}" onclick="setLang('en')">🇬🇧 EN</button>
+            <button class="lang-btn ${lang === 'no' ? 'active' : ''}" onclick="setLang('no')">NO</button>
+            <button class="lang-btn ${lang === 'en' ? 'active' : ''}" onclick="setLang('en')">EN</button>
         </div>
     `;
 }
 
-// Reset with spin animation
+// ── RESET HELPERS ─────────────────────────────────────────────────────────────
+
 function spinReset(listName, btn) {
     btn.classList.remove('spinning');
-    void btn.offsetWidth; // reflow to restart animation
+    void btn.offsetWidth;
     btn.classList.add('spinning');
     btn.addEventListener('animationend', () => btn.classList.remove('spinning'), { once: true });
     resetList(listName);
 }
 
-// Reset all with confirmation
 async function doResetAll(btn) {
     const confirmed = confirm(lang === 'no'
         ? 'Er du sikker? Dette sletter alt.'
@@ -115,93 +80,7 @@ async function doResetAll(btn) {
     await resetAll();
 }
 
-// ── RENDER HELPERS ────────────────────────────────────────────────────────────
-
-function renderSimpleList(listName) {
-    const items = model.lists[listName];
-    if (!items.length) return `<li class="empty-msg">${t('empty_list')}</li>`;
-    return items.map(item => /*html*/`
-        <div class="item-row">
-            <li>${escHtml(item.value)}</li>
-            <button class="btn-icon" onclick="removeItem('${listName}',${item.id})">✕</button>
-        </div>
-    `).join('');
-}
-
-function renderKeywords() {
-    const items = model.lists.Nøkkelord;
-    if (!items.length) return `<li class="empty-msg">${t('empty_keywords')}</li>`;
-    return items.map((item, idx) => {
-        const isEditing = model.editingIndex === idx;
-        let html = /*html*/`
-            <div class="item-row">
-                <li onclick="editKeyword(${idx})" style="cursor:pointer;">${escHtml(item.value)}</li>
-                <button class="btn-icon" onclick="removeItem('Nøkkelord',${item.id})">✕</button>
-            </div>
-        `;
-        if (isEditing) {
-            html += /*html*/`
-                <input class="add-input meaning-input"
-                    placeholder="${t('ph_meaning')}"
-                    value="${escHtml(item.extra)}"
-                    onblur="saveMeaning(${item.id},${idx},this.value)"
-                    onkeydown="if(event.key==='Enter') saveMeaning(${item.id},${idx},this.value)"
-                    autofocus>
-            `;
-        } else if (item.extra) {
-            html += /*html*/`
-                <p class="keyword-meaning"
-                    contenteditable="true"
-                    onblur="saveMeaning(${item.id},${idx},this.innerText)">${escHtml(item.extra)}</p>
-            `;
-        }
-        return html;
-    }).join('');
-}
-
-function renderTasks() {
-    if (!model.tasks.length) return `<p class="empty-msg">${t('empty_tasks')}</p>`;
-    return model.tasks.map(task => {
-        const isOpen = model.expandedTask === task.id;
-        const doneCount = task.subtasks.filter(s => s.ischecked).length;
-        const subInfo = task.subtasks.length ? ` · ${doneCount}/${task.subtasks.length}` : '';
-        let subtaskHtml = '';
-        if (isOpen) {
-            const subRows = task.subtasks.map(sub => /*html*/`
-                <div class="subtask-row">
-                    <input type="checkbox" ${sub.ischecked ? 'checked' : ''}
-                        onchange="toggleSubtask(${task.id},${sub.id})">
-                    <span class="subtask-label ${sub.ischecked ? 'done' : ''}">${escHtml(sub.task)}</span>
-                    <button class="btn-icon" onclick="removeSubtask(${task.id},${sub.id})">✕</button>
-                </div>
-            `).join('');
-            subtaskHtml = /*html*/`
-                <div class="task-panel">
-                    ${subRows || `<span class="empty-msg">${t('empty_subtasks')}</span>`}
-                    <div class="subtask-add-row">
-                        <input class="add-input" placeholder="${t('ph_subtask')}"
-                            onkeydown="if(event.key==='Enter') addSubtask(${task.id},this)">
-                    </div>
-                </div>
-            `;
-        }
-        return /*html*/`
-            <div class="task-item">
-                <div class="task-main">
-                    <input type="checkbox" ${task.ischecked ? 'checked' : ''}
-                        onchange="toggleTask(${task.id})">
-                    <span class="task-label ${task.ischecked ? 'done' : ''}"
-                        onclick="toggleTaskPanel(${task.id})">${escHtml(task.task)}</span>
-                    <span class="task-expand" onclick="toggleTaskPanel(${task.id})">
-                        ${subInfo} ${isOpen ? '▲' : '▼'}
-                    </span>
-                    <button class="btn-icon" onclick="removeTask(${task.id})">✕</button>
-                </div>
-                ${subtaskHtml}
-            </div>
-        `;
-    }).join('');
-}
+// ── UTILITY ───────────────────────────────────────────────────────────────────
 
 function escHtml(str) {
     if (!str) return '';

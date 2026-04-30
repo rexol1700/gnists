@@ -39,7 +39,7 @@ async function doRegister(username, password, errorEl) {
 
 function doLogout() {
     API.logout();
-    model.lists = { interests: [], questions: [], learningGoals: [], Nøkkelord: [] };
+    model.lists = { interests: [], questions: [], learningGoals: [], Nøkkelord: [], bills: [] };
     model.tasks = [];
     changePage('landing');
 }
@@ -53,6 +53,7 @@ async function loadData() {
         model.lists.questions     = data.lists.questions     || [];
         model.lists.learningGoals = data.lists.learningGoals || [];
         model.lists.Nøkkelord     = data.lists.Nøkkelord     || [];
+        model.lists.bills         = data.lists.bills         || [];
         model.tasks = data.tasks || [];
         model.page = 'home';
     } catch (err) {
@@ -94,12 +95,14 @@ async function resetAll() {
             API.resetList('questions'),
             API.resetList('learningGoals'),
             API.resetList('Nøkkelord'),
+            API.resetList('bills'),
             API.resetList('tasks'),
         ]);
         model.lists.interests     = [];
         model.lists.questions     = [];
         model.lists.learningGoals = [];
         model.lists.Nøkkelord     = [];
+        model.lists.bills         = [];
         model.tasks               = [];
         updateView();
         toast(lang === 'no' ? 'Alt tømt' : 'All cleared');
@@ -249,4 +252,33 @@ function lightToggle() {
 
 if (API.isLoggedIn()) {
     // Will be called from views.js after first render
+}
+
+// ── BILLS ─────────────────────────────────────────────────────────────────────
+
+function addBill(listId) {
+    const nameEl   = document.getElementById('bill-name-input');
+    const amountEl = document.getElementById('bill-amount-input');
+    const dateEl   = document.getElementById('bill-date-input');
+    const name = nameEl?.value.trim();
+    if (!name) return;
+    const extra = `${amountEl?.value.trim() || ''}|${dateEl?.value || ''}`;
+    nameEl.value = '';
+    if (amountEl) amountEl.value = '';
+    if (dateEl)   dateEl.value   = '';
+    API.addItem(listId, name, extra)
+        .then(res => {
+            model.lists[listId].push({ id: res.id, value: name, extra });
+            updateView();
+        })
+        .catch(err => toast(err.message, 'error'));
+}
+
+function removeBill(id) {
+    API.deleteItem(id)
+        .then(() => {
+            model.lists.bills = model.lists.bills.filter(b => b.id !== id);
+            updateView();
+        })
+        .catch(err => toast(err.message, 'error'));
 }
