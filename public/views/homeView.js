@@ -4,9 +4,7 @@ function homeView() {
     const lightOn = model.isLightmode;
     const activePanels = layoutGetActive();
 
-    const boardPanels = activePanels.map((panel, idx) =>
-        renderPanel(panel, idx)
-    ).join('');
+    const boardPanels = activePanels.map((panel, idx) => renderPanel(panel, idx)).join('');
 
     return /*html*/`
     <div class="topbar">

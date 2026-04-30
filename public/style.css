@@ -724,7 +724,11 @@ body.lightmode .bill-date-input { color-scheme: light; }
 }
 
 /* ── ADD PANEL SLOT ──────────────────────────────────────────────────────── */
+/* Pinned to column 3, row 1 — Questions fills col 1-2, add slot takes col 3.
+   All other panels flow from row 2 onwards via grid-auto-flow. */
 .panel-add {
+    grid-column: 3;
+    grid-row: 1;
     background: transparent;
     border: 1px dashed var(--border);
     display: flex;
@@ -736,6 +740,12 @@ body.lightmode .bill-date-input { color-scheme: light; }
     transition: border-color 0.15s, background 0.15s;
     position: relative;
     min-height: 80px;
+}
+
+/* Questions always anchors to row 1, cols 1-2 */
+.panel[data-panel-id="questions"] {
+    grid-column: span 2;
+    grid-row: 1;
 }
 .panel-add:hover {
     border-color: var(--accent);
