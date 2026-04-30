@@ -41,8 +41,9 @@ function layoutAddPanel(id) {
     if (!model.boardLayout.includes(id)) {
         model.boardLayout.push(id);
         layoutSave(model.boardLayout);
-        updateView();
     }
+    model.addPanelOpen = false;
+    updateView();
 }
 
 function layoutRemovePanel(id) {

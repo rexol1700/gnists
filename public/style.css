@@ -650,228 +650,235 @@ body.lightmode .bill-date-input { color-scheme: light; }
     background: #f97c6d0a;
 }
 
-/* ── CUSTOMIZE BUTTON ────────────────────────────────────────────────────── */
-.btn-manage {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    padding: 5px 11px;
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 7px;
+
+/* ── PANEL HEADER CONTROLS ───────────────────────────────────────────────── */
+/* Grip — always visible but subtle, snaps to full opacity on hover          */
+.panel-drag-grip {
     color: var(--muted);
-    font-family: var(--font);
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.btn-manage:hover,
-.btn-manage.active {
-    background: #7c6dfa15;
-    color: var(--accent);
-    border-color: var(--accent);
-}
-
-/* ── MANAGE DRAWER ───────────────────────────────────────────────────────── */
-.manage-drawer {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 14px 20px 16px;
-    flex-shrink: 0;
-    animation: slideDown 0.18s ease;
-}
-
-@keyframes slideDown {
-    from { opacity: 0; transform: translateY(-6px); }
-    to   { opacity: 1; transform: translateY(0); }
-}
-
-.manage-header {
-    display: flex;
-    align-items: center;
-    margin-bottom: 4px;
-}
-
-.manage-title {
-    font-size: 0.78rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    flex: 1;
-}
-
-.manage-close {
-    background: transparent;
-    border: none;
-    color: var(--muted);
-    font-size: 0.85rem;
-    cursor: pointer;
-    padding: 2px 6px;
-    border-radius: 4px;
-    transition: color 0.15s, background 0.15s;
-}
-.manage-close:hover { color: var(--text); background: var(--surface2); }
-
-.manage-hint {
-    font-size: 0.74rem;
-    color: var(--muted);
-    margin-bottom: 10px;
-    opacity: 0.7;
-}
-
-.manage-list {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 10px;
-}
-
-.manage-item {
-    display: flex;
-    align-items: center;
-    gap: 7px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 6px 10px;
+    font-size: 1rem;
+    opacity: 0.25;
     cursor: grab;
-    transition: box-shadow 0.15s, border-color 0.15s, opacity 0.15s;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+    line-height: 1;
+    margin-right: 2px;
     user-select: none;
 }
-.manage-item:active { cursor: grabbing; }
+.panel:hover .panel-drag-grip { opacity: 0.55; }
+.panel-drag-grip:active { cursor: grabbing; }
 
-.manage-drag-handle {
-    color: var(--muted);
-    font-size: 1rem;
-    line-height: 1;
-    opacity: 0.5;
+.panel-icon {
+    font-size: 0.88rem;
+    flex-shrink: 0;
 }
 
-.manage-icon { font-size: 0.9rem; }
-
-.manage-label {
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--text);
-}
-
-.manage-span-toggle {
-    display: flex;
-    gap: 2px;
-    margin-left: 4px;
-}
-
-.manage-span-btn {
-    background: transparent;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    color: var(--muted);
-    font-size: 0.7rem;
-    padding: 2px 5px;
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s, border-color 0.12s;
-}
-.manage-span-btn.active,
-.manage-span-btn:hover {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-}
-
-.manage-remove-btn {
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    color: var(--muted);
-    font-size: 1rem;
-    line-height: 1;
-    padding: 1px 5px;
-    cursor: pointer;
-    margin-left: 2px;
-    transition: color 0.12s, background 0.12s, border-color 0.12s;
-}
-.manage-remove-btn:hover {
-    color: var(--accent2);
-    background: #f97c6d12;
-    border-color: #f97c6d40;
-}
-
-/* ── AVAILABLE PANELS ────────────────────────────────────────────────────── */
-.manage-section-title {
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    margin-bottom: 7px;
-    opacity: 0.7;
-}
-
-.manage-inactive {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.manage-add-pill {
+/* Controls group — hide/wide/clear — sit at the right of every panel header */
+.panel-controls {
     display: flex;
     align-items: center;
-    gap: 6px;
-    background: transparent;
-    border: 1px dashed var(--border);
-    border-radius: 8px;
-    padding: 6px 10px;
-    font-family: var(--font);
-    font-size: 0.82rem;
-    color: var(--muted);
-    cursor: pointer;
-    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    gap: 3px;
+    margin-left: auto;
+    /* Fade in on hover so they don't clutter the resting state */
+    opacity: 0;
+    transition: opacity 0.15s;
 }
-.manage-add-pill:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-    background: #7c6dfa0a;
-}
+.panel:hover .panel-controls { opacity: 1; }
 
-.manage-plus {
-    font-size: 1rem;
-    line-height: 1;
-    font-weight: 300;
+/* Shared style for the two new control buttons */
+.panel-ctrl-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    color: var(--muted);
+    width: 24px;
+    height: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.78rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.panel-ctrl-btn:hover {
+    background: #7c6dfa15;
+    color: var(--accent);
+    border-color: #7c6dfa40;
+}
+.panel-ctrl-btn.ctrl-active {
+    color: var(--accent);
+}
+.panel-ctrl-hide:hover {
+    background: #f97c6d12;
+    color: var(--accent2);
+    border-color: #f97c6d40;
 }
 
 /* ── DRAG STATES ─────────────────────────────────────────────────────────── */
 .panel-dragging {
-    opacity: 0.4;
+    opacity: 0.35;
     box-shadow: 0 0 0 2px var(--accent);
 }
-
 .panel-drag-over {
     box-shadow: inset 0 0 0 2px var(--accent);
 }
 
-.drawer-dragging {
-    opacity: 0.4;
+/* ── ADD PANEL SLOT ──────────────────────────────────────────────────────── */
+.panel-add {
+    background: transparent;
+    border: 1px dashed var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 14px 12px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    position: relative;
+    min-height: 80px;
+}
+.panel-add:hover {
+    border-color: var(--accent);
+    background: #7c6dfa05;
+}
+.panel-add.panel-add-open {
+    border-color: var(--accent);
+    background: #7c6dfa08;
+    cursor: default;
+    align-items: flex-start;
+    justify-content: flex-start;
 }
 
-.drawer-drag-over {
-    border-color: var(--accent) !important;
-    box-shadow: 0 0 0 2px #7c6dfa30;
+.add-panel-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 1.3rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.2s cubic-bezier(.34,1.4,.64,1);
+    margin-bottom: 6px;
+}
+.panel-add:hover .add-panel-btn,
+.add-panel-btn.open {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+.add-panel-btn.open .add-panel-cross {
+    display: inline-block;
+    transform: rotate(45deg);
+}
+.add-panel-cross {
+    display: inline-block;
+    transition: transform 0.2s cubic-bezier(.34,1.4,.64,1);
 }
 
-/* ── BOARD DIMMED (when manage is open) ──────────────────────────────────── */
-.board-dimmed {
-    opacity: 0.6;
-    pointer-events: none;
+.add-panel-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 10px;
 }
-/* But panels in manage mode should still be draggable */
-.board-dimmed .panel {
-    pointer-events: auto;
+.add-panel-label.muted { color: var(--muted); }
+.panel-add:hover .add-panel-label { color: var(--accent); }
+
+/* Options that appear when picker is open */
+.add-panel-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    width: 100%;
+    animation: fadeUp 0.15s ease;
 }
 
-/* ── PANEL ICON ──────────────────────────────────────────────────────────── */
-.panel-icon {
-    font-size: 0.9rem;
-    margin-right: 2px;
+.add-panel-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 7px 10px;
+    font-family: var(--font);
+    font-size: 0.84rem;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.12s, background 0.12s;
+    width: 100%;
 }
+.add-panel-option:hover {
+    border-color: var(--accent);
+    background: #7c6dfa0d;
+}
+.apo-icon { font-size: 0.9rem; flex-shrink: 0; }
+.apo-label { flex: 1; font-weight: 500; }
+
+/* ── BILLS PANEL ─────────────────────────────────────────────────────────── */
+.bill-add-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+}
+.bill-add-row .add-input { margin-bottom: 0; }
+.bill-name-input   { flex: 2; min-width: 100px; }
+.bill-amount-input { flex: 1; min-width: 70px; }
+.bill-date-input   { flex: 1; min-width: 110px; color-scheme: dark; }
+body.lightmode .bill-date-input { color-scheme: light; }
+
+.btn-add-bill {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 7px 12px;
+    font-family: var(--font);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+}
+.btn-add-bill:hover { opacity: 0.82; }
+
+.bill-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 5px;
+    overflow: hidden;
+}
+.bill-item.bill-overdue {
+    border-color: #f97c6d60;
+    background: #f97c6d06;
+}
+.bill-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+}
+.bill-name { flex: 1; font-size: 0.88rem; }
+.bill-meta { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+.bill-amount { font-size: 0.82rem; font-weight: 600; color: var(--accent); }
+.bill-due {
+    font-size: 0.78rem;
+    color: var(--muted);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 2px 6px;
+}
+.bill-due.overdue { color: var(--accent2); border-color: #f97c6d40; background: #f97c6d0a; }

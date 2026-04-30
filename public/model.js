@@ -17,6 +17,6 @@ const model = {
     editingIndex: null,   // which keyword is being edited
     expandedTask: null,   // which task panel is open
     isLightmode: false,
-    boardManage: false,   // is the customize drawer open?
+    addPanelOpen: false,  // is the add-panel picker open?
     boardLayout: [],      // ordered panel IDs — populated by layoutLoad() at boot
 };

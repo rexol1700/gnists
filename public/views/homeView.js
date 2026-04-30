@@ -3,10 +3,9 @@
 function homeView() {
     const lightOn = model.isLightmode;
     const activePanels = layoutGetActive();
-    const inactivePanels = layoutGetInactive();
 
     const boardPanels = activePanels.map((panel, idx) =>
-        renderPanel(panel, idx, activePanels.length)
+        renderPanel(panel, idx)
     ).join('');
 
     return /*html*/`
@@ -15,9 +14,6 @@ function homeView() {
         <div class="topbar-actions">
             ${langSwitcher()}
             <span class="topbar-user">👤 ${API.username}</span>
-            <button class="btn-manage ${model.boardManage ? 'active' : ''}" onclick="toggleBoardManage()" title="Manage board">
-                ⊞ ${lang === 'no' ? 'Tilpass' : 'Customize'}
-            </button>
             <button class="btn-reset-all" onclick="doResetAll(this)">
                 <span class="reset-icon">↺</span> ${t('btn_reset_all')}
             </button>
@@ -28,101 +24,101 @@ function homeView() {
         </div>
     </div>
 
-    ${model.boardManage ? renderManageDrawer(activePanels, inactivePanels) : ''}
-
-    <div class="board ${model.boardManage ? 'board-dimmed' : ''}" id="board-grid"
-         ondragover="boardDragOver(event)" ondrop="boardDrop(event)">
+    <div class="board" id="board-grid"
+         ondragover="boardDragOver(event)"
+         ondrop="boardDrop(event)"
+         ondragleave="boardDragLeave(event)">
         ${boardPanels}
+        ${renderAddPanel()}
     </div>
     `;
 }
 
-// ── MANAGE DRAWER ─────────────────────────────────────────────────────────────
+// ── ADD PANEL SLOT ────────────────────────────────────────────────────────────
 
-function renderManageDrawer(activePanels, inactivePanels) {
-    const activeItems = activePanels.map((panel, idx) => /*html*/`
-        <div class="manage-item manage-item-active"
-             draggable="true"
-             data-idx="${idx}"
-             ondragstart="drawerDragStart(event, ${idx})"
-             ondragover="drawerDragOver(event)"
-             ondrop="drawerDrop(event, ${idx})"
-             ondragend="drawerDragEnd(event)">
-            <span class="manage-drag-handle">⠿</span>
-            <span class="manage-icon">${panel.icon}</span>
-            <span class="manage-label">${t(panel.labelKey)}</span>
-            <span class="manage-span-toggle">
-                <button class="manage-span-btn ${panel.span === 2 ? 'active' : ''}"
-                    onclick="layoutSetSpan('${panel.id}', 2)" title="Wide">▬</button>
-                <button class="manage-span-btn ${panel.span === 1 ? 'active' : ''}"
-                    onclick="layoutSetSpan('${panel.id}', 1)" title="Normal">▪</button>
-            </span>
-            <button class="manage-remove-btn" onclick="layoutRemovePanel('${panel.id}')" title="Remove">−</button>
-        </div>
-    `).join('');
+function renderAddPanel() {
+    const inactive = layoutGetInactive();
+    const isOpen = model.addPanelOpen;
 
-    const inactiveItems = inactivePanels.length ? /*html*/`
-        <div class="manage-section-title">${lang === 'no' ? 'Tilgjengelige paneler' : 'Available panels'}</div>
-        <div class="manage-inactive">
-            ${inactivePanels.map(panel => /*html*/`
-                <button class="manage-add-pill" onclick="layoutAddPanel('${panel.id}')">
-                    ${panel.icon} ${t(panel.labelKey)} <span class="manage-plus">+</span>
+    if (!inactive.length) return ''; // all panels already on board
+
+    const picker = isOpen ? /*html*/`
+        <div class="add-panel-picker">
+            ${inactive.map(p => /*html*/`
+                <button class="add-panel-option" onclick="layoutAddPanel('${p.id}')">
+                    <span class="apo-icon">${p.icon}</span>
+                    <span class="apo-label">${t(p.labelKey)}</span>
                 </button>
             `).join('')}
         </div>
     ` : '';
 
     return /*html*/`
-        <div class="manage-drawer" id="manage-drawer">
-            <div class="manage-header">
-                <span class="manage-title">${lang === 'no' ? 'Tilpass tavlen' : 'Customize board'}</span>
-                <button class="manage-close" onclick="toggleBoardManage()">✕</button>
-            </div>
-            <div class="manage-hint">${lang === 'no' ? 'Dra for å endre rekkefølge' : 'Drag to reorder'}</div>
-            <div class="manage-list" id="manage-list">
-                ${activeItems}
-            </div>
-            ${inactiveItems}
+        <div class="panel panel-add ${isOpen ? 'panel-add-open' : ''}"
+             onclick="${isOpen ? '' : 'toggleAddPanel()'}">
+            <button class="add-panel-btn ${isOpen ? 'open' : ''}"
+                    onclick="event.stopPropagation(); toggleAddPanel()">
+                <span class="add-panel-cross">+</span>
+            </button>
+            ${isOpen
+                ? `<div class="add-panel-label">${lang === 'no' ? 'Legg til panel' : 'Add panel'}</div>`
+                : `<div class="add-panel-label muted">${lang === 'no' ? 'Legg til panel' : 'Add panel'}</div>`
+            }
+            ${picker}
         </div>
     `;
 }
 
 // ── PANEL SHELL ───────────────────────────────────────────────────────────────
 
-function renderPanel(panel, idx, total) {
+function renderPanel(panel, idx) {
     const spanStyle = panel.span > 1 ? `style="grid-column: span ${panel.span};"` : '';
     const [bodyHtml, inputHtml] = renderPanelContent(panel);
+    const isWide = panel.span > 1;
 
     return /*html*/`
         <div class="panel" ${spanStyle}
              data-panel-id="${panel.id}"
              data-panel-idx="${idx}"
-             draggable="${model.boardManage ? 'true' : 'false'}"
+             draggable="true"
              ondragstart="boardPanelDragStart(event, ${idx})"
              ondragend="boardPanelDragEnd(event)">
+
             <div class="panel-header">
+                <span class="panel-drag-grip" title="${lang === 'no' ? 'Dra for å flytte' : 'Drag to move'}">⠿</span>
                 <span class="panel-icon">${panel.icon}</span>
                 <span class="panel-title">${t(panel.labelKey)}</span>
-                <button class="btn-reset"
-                    onclick="spinReset('${panel.id}', this)" title="${t('btn_clear')}">↺</button>
+
+                <div class="panel-controls">
+                    <button class="panel-ctrl-btn ${isWide ? 'ctrl-active' : ''}"
+                        onclick="layoutSetSpan('${panel.id}', ${isWide ? 1 : 2})"
+                        title="${isWide ? (lang === 'no' ? 'Gjør smal' : 'Make narrow') : (lang === 'no' ? 'Gjør bred' : 'Make wide')}">
+                        ${isWide ? '⇥' : '⇤'}
+                    </button>
+                    <button class="btn-reset"
+                        onclick="spinReset('${panel.id}', this)" title="${t('btn_clear')}">↺</button>
+                    <button class="panel-ctrl-btn panel-ctrl-hide"
+                        onclick="layoutRemovePanel('${panel.id}')"
+                        title="${lang === 'no' ? 'Skjul panel' : 'Hide panel'}">✕</button>
+                </div>
             </div>
+
             ${inputHtml}
             <div class="panel-scroll">${bodyHtml}</div>
         </div>
     `;
 }
 
-// ── DRAG & DROP — BOARD GRID ──────────────────────────────────────────────────
-// Drag panels directly on the board (only when manage drawer is open)
+// ── DRAG & DROP ───────────────────────────────────────────────────────────────
 
 let _boardDragFrom = null;
 
 function boardPanelDragStart(event, idx) {
-    if (!model.boardManage) { event.preventDefault(); return; }
     _boardDragFrom = idx;
     event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', idx); // required for Firefox
     setTimeout(() => {
-        const el = event.target.closest('.panel');
+        const el = document.querySelector(`.panel[data-panel-idx="${idx}"]`);
         if (el) el.classList.add('panel-dragging');
     }, 0);
 }
@@ -143,58 +139,38 @@ function boardDragOver(event) {
     if (target) target.classList.add('panel-drag-over');
 }
 
+function boardDragLeave(event) {
+    // Only clear if leaving the board entirely
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+        document.querySelectorAll('.panel-drag-over').forEach(el => el.classList.remove('panel-drag-over'));
+    }
+}
+
 function boardDrop(event) {
     event.preventDefault();
     const target = event.target.closest('.panel[data-panel-idx]');
+    document.querySelectorAll('.panel-drag-over').forEach(el => el.classList.remove('panel-drag-over'));
     if (!target || _boardDragFrom === null) return;
     const toIdx = parseInt(target.dataset.panelIdx, 10);
-    if (!isNaN(toIdx)) layoutMovePanel(_boardDragFrom, toIdx);
-}
-
-// ── DRAG & DROP — MANAGE DRAWER ───────────────────────────────────────────────
-
-let _drawerDragFrom = null;
-
-function drawerDragStart(event, idx) {
-    _drawerDragFrom = idx;
-    event.dataTransfer.effectAllowed = 'move';
-    setTimeout(() => event.target.closest('.manage-item')?.classList.add('drawer-dragging'), 0);
-}
-
-function drawerDragOver(event) {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    document.querySelectorAll('.drawer-drag-over').forEach(el => el.classList.remove('drawer-drag-over'));
-    event.currentTarget.classList.add('drawer-drag-over');
-}
-
-function drawerDrop(event, toIdx) {
-    event.preventDefault();
-    document.querySelectorAll('.drawer-dragging, .drawer-drag-over').forEach(el => {
-        el.classList.remove('drawer-dragging', 'drawer-drag-over');
-    });
-    if (_drawerDragFrom !== null) layoutMovePanel(_drawerDragFrom, toIdx);
-    _drawerDragFrom = null;
-}
-
-function drawerDragEnd(event) {
-    document.querySelectorAll('.drawer-dragging, .drawer-drag-over').forEach(el => {
-        el.classList.remove('drawer-dragging', 'drawer-drag-over');
-    });
-    _drawerDragFrom = null;
+    if (!isNaN(toIdx) && toIdx !== _boardDragFrom) layoutMovePanel(_boardDragFrom, toIdx);
 }
 
 // ── SPAN TOGGLE ───────────────────────────────────────────────────────────────
 
 function layoutSetSpan(id, span) {
     const panel = PANEL_REGISTRY.find(p => p.id === id);
-    if (panel) {
-        panel.span = span;
-        updateView();
-    }
+    if (panel) { panel.span = span; updateView(); }
+}
+
+// ── ADD PANEL TOGGLE ──────────────────────────────────────────────────────────
+
+function toggleAddPanel() {
+    model.addPanelOpen = !model.addPanelOpen;
+    updateView();
 }
 
 // ── LANG SWITCHER ─────────────────────────────────────────────────────────────
+
 function langSwitcher() {
     return /*html*/`
         <div class="lang-switcher">
