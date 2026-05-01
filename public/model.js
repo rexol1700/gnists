@@ -20,7 +20,7 @@ const model = {
     tasks: [], // [{ id, task, ischecked, subtasks: [{ id, task, ischecked }] }]
 
     // UI state
-    editingIndex: null,   // which keyword is being edited
+    editingIndex: new Set(), // which keywords are expanded
     expandedTask: null,   // which task panel is open
     expandedNote: null,   // which note is expanded
     isLightmode: false,

@@ -27,7 +27,7 @@ function renderKeywordsPanel(panel) {
     const items = model.lists[panel.id] || [];
     if (!items.length) return `<li class="empty-msg">${t(panel.emptyKey)}</li>`;
     return items.map((item, idx) => {
-        const isOpen = model.editingIndex === idx;
+        const isOpen = model.editingIndex.has(idx);
         const hasMeaning = item.extra && item.extra.trim();
         return /*html*/`
             <div class="keyword-block ${isOpen ? 'kw-open' : 'kw-closed'}">

@@ -10,7 +10,7 @@ function toast(msg, type = 'success') {
 
 function changePage(page) {
     model.page = page;
-    model.editingIndex = null;
+    model.editingIndex = new Set();
     model.expandedTask = null;
     updateView();
 }
@@ -159,9 +159,12 @@ async function addKeyword(inputEl) {
 }
 
 function editKeyword(index) {
-    model.editingIndex = model.editingIndex === index ? null : index;
+    if (model.editingIndex.has(index)) {
+        model.editingIndex.delete(index);
+    } else {
+        model.editingIndex.add(index);
+    }
     updateView();
-    // After render, auto-fit any open keyword textarea
     requestAnimationFrame(() => {
         document.querySelectorAll('.keyword-meaning').forEach(el => {
             el.style.height = 'auto';
