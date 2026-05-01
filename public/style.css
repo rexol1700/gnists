@@ -534,7 +534,122 @@ ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
 
 .meaning-input { margin-top: 3px; margin-bottom: 5px; font-size: 0.82rem; }
 
-/* ── TASKS ───────────────────────────────────────────────────────────────── */
+/* ── MOBILE (≤600px — iPhone 12 is 390px) ───────────────────────────────── */
+@media (max-width: 600px) {
+    body { font-size: 16px; }
+
+    .topbar {
+        padding: 10px 14px;
+    }
+    .topbar-title { font-size: 1rem; }
+    .topbar-user  { font-size: 0.8rem; }
+
+    /* Board scrolls vertically like a feed */
+    .tile-board {
+        overflow-y: auto;
+        overflow-x: hidden;
+        gap: 8px;
+        padding: 8px;
+        background: var(--bg);
+    }
+
+    /* Each row becomes a vertical stack — panels go full width */
+    .tile-row {
+        flex-direction: column;
+        flex-shrink: 0;
+        min-height: unset;
+        overflow: visible;
+        gap: 8px;
+    }
+
+    /* Panels are full-width cards with natural height */
+    .tile-panel {
+        width: 100% !important;
+        min-width: unset !important;
+        flex: none !important;
+        border-radius: 12px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+        overflow: hidden;
+    }
+
+    .tile-panel-inner {
+        padding: 14px 16px;
+    }
+
+    /* Hide resize handles on mobile — no horizontal resizing */
+    .tile-resize-handle { display: none; }
+
+    /* Panel scroll: natural height, no clipping */
+    .panel-scroll {
+        max-height: none;
+        overflow-y: visible;
+    }
+
+    /* Bigger panel header */
+    .panel-header { margin-bottom: 12px; }
+    .panel-icon   { font-size: 1.1rem; }
+    .panel-title  { font-size: 0.78rem; }
+
+    /* Bigger inputs and tap targets */
+    .add-input {
+        font-size: 1rem;
+        padding: 10px 13px;
+        border-radius: 10px;
+    }
+
+    /* Item rows */
+    .item-row {
+        padding: 8px 2px;
+        gap: 10px;
+    }
+    .item-row li { font-size: 0.95rem; }
+
+    /* Buttons */
+    .btn-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 1rem;
+    }
+    .btn {
+        padding: 9px 16px;
+        font-size: 0.9rem;
+    }
+
+    /* Keyword blocks */
+    .kw-header { padding: 10px 4px; }
+    .kw-word   { font-size: 1rem; }
+    .kw-preview { font-size: 0.8rem; }
+    .keyword-meaning { font-size: 0.92rem; padding: 10px 13px; }
+
+    /* Tasks */
+    .task-item { padding: 10px 12px; }
+    .task-label { font-size: 0.95rem; }
+
+    /* Shopping / reminders */
+    .shopping-item  { padding: 10px 4px; }
+    .shopping-label { font-size: 0.95rem; }
+    .reminder-item  { padding: 10px 4px; }
+    .reminder-text  { font-size: 0.95rem; }
+
+    /* Time items */
+    .time-item  { padding: 9px 4px; }
+    .time-label { font-size: 0.95rem; }
+    .time-badge { font-size: 0.85rem; }
+
+    /* Selling */
+    .selling-item { padding: 10px 4px; }
+    .selling-name { font-size: 0.95rem; }
+
+    /* Notes */
+    .note-title { font-size: 0.95rem; }
+    .note-body  { font-size: 0.92rem; }
+
+    /* Bottom drop zone hidden on mobile */
+    .tile-bottom-drop { display: none; }
+
+    /* Manage panel overlay */
+    .apo-overlay { font-size: 1rem; }
+}
 .task-item {
     background: var(--surface);
     border: 1px solid var(--border);
