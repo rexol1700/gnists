@@ -78,7 +78,8 @@ body {
     flex-direction: column;
     gap: var(--gap);
     background: var(--border);
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     min-height: 0;
     position: relative;
 }
@@ -87,10 +88,14 @@ body {
 .tile-row {
     display: flex;
     flex-direction: row;
-    flex: 1;
+    flex-shrink: 0;
     gap: 0;
-    min-height: 0;
+    min-height: 280px;
     position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
 }
 
 /* ── TILE PANEL ──────────────────────────────────────────────────────────── */
@@ -100,8 +105,9 @@ body {
     flex-direction: row;
     background: var(--bg);
     overflow: visible;
-    min-width: 120px;
+    min-width: 220px;
     transition: box-shadow 0.15s;
+    flex-shrink: 0;
 }
 
 .tile-panel-inner {
@@ -111,6 +117,37 @@ body {
     overflow: hidden;
     padding: 14px 16px;
     min-width: 0;
+}
+
+/* On larger screens panels fill the row height and share width via flex */
+@media (min-width: 600px) {
+    .tile-board {
+        overflow-y: auto;
+    }
+    .tile-row {
+        min-height: 260px;
+        overflow-x: auto;
+    }
+    .tile-panel {
+        min-width: 200px;
+        flex-shrink: 0;
+    }
+}
+
+/* On wide screens restore the original fill behaviour */
+@media (min-width: 900px) {
+    .tile-board {
+        overflow: hidden;
+    }
+    .tile-row {
+        flex: 1;
+        min-height: 0;
+        overflow-x: auto;
+    }
+    .tile-panel {
+        flex-shrink: 1;
+        min-width: 160px;
+    }
 }
 
 /* Animate new panels entering */
@@ -319,9 +356,17 @@ body.tile-resizing .tile-resize-handle { pointer-events: all; }
 .panel-scroll {
     flex: 1;
     overflow-y: auto;
-    min-height: 0;
+    min-height: 80px;
+    max-height: 60vh;
     scrollbar-width: thin;
     scrollbar-color: var(--border) transparent;
+}
+
+@media (min-width: 900px) {
+    .panel-scroll {
+        max-height: none;
+        min-height: 0;
+    }
 }
 
 /* ── INPUTS ──────────────────────────────────────────────────────────────── */
