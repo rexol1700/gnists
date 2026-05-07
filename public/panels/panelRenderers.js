@@ -215,29 +215,159 @@ function renderSellingPanelInput(panel) {
 
 // ── shopping ──────────────────────────────────────────────────────────────────
 function renderShoppingPanel(panel) {
-    const items = model.lists[panel.id] || [];
-    if (!items.length) return `<p class="empty-msg">${t(panel.emptyKey)}</p>`;
+    const allItems = model.lists[panel.id] || [];
+    const lists = model.shoppingLists || ['Handleliste'];
+    const active = model.activeShoppingList || lists[0];
+
+    // Filter to active list (support both old format "done"|"" and new "listName|done")
+    const items = allItems.filter(item => {
+        const parts = (item.extra || '').split('|');
+        if (parts.length >= 2) return parts[0] === active;
+        return active === lists[0]; // legacy items go to first list
+    });
+
+    const tabsHtml = lists.map(l => /*html*/`
+        <button class="shop-tab ${l === active ? 'active' : ''}" onclick="setActiveShoppingList('${escHtml(l)}')">${escHtml(l)}</button>
+    `).join('');
+
+    const addListHtml = /*html*/`
+        <div class="shop-tab-add" onclick="promptAddShoppingList()">＋</div>
+    `;
+
+    const listHtml = items.length
+        ? /*html*/`<ul class="shopping-list">${items.map(item => {
+            const parts = (item.extra || '').split('|');
+            const checked = parts.length >= 2 ? parts[1] === 'done' : item.extra === 'done';
+            return /*html*/`
+                <div class="shopping-item ${checked ? 'checked' : ''}">
+                    <input type="checkbox" ${checked ? 'checked' : ''}
+                        onchange="toggleShoppingItem(${item.id}, '${panel.id}', this.checked)">
+                    <span class="shopping-label">${escHtml(item.value)}</span>
+                    <button class="btn-icon" onclick="removeItem('${panel.id}',${item.id})">✕</button>
+                </div>
+            `;
+        }).join('')}</ul>`
+        : `<p class="empty-msg">${t(panel.emptyKey)}</p>`;
+
+    const manageBtnHtml = lists.length > 1 ? /*html*/`
+        <button class="btn-icon shop-remove-list" title="${lang === 'no' ? 'Slett denne listen' : 'Delete this list'}"
+            onclick="removeShoppingList('${escHtml(active)}')">🗑️</button>
+    ` : '';
+
     return /*html*/`
-        <ul class="shopping-list">
-            ${items.map(item => {
-                const checked = item.extra === 'done';
-                return /*html*/`
-                    <div class="shopping-item ${checked ? 'checked' : ''}">
-                        <input type="checkbox" ${checked ? 'checked' : ''}
-                            onchange="toggleShoppingItem(${item.id}, '${panel.id}', this.checked)">
-                        <span class="shopping-label">${escHtml(item.value)}</span>
-                        <button class="btn-icon" onclick="removeItem('${panel.id}',${item.id})">✕</button>
-                    </div>
-                `;
-            }).join('')}
-        </ul>
+        <div class="shop-tabs-row">
+            <div class="shop-tabs">${tabsHtml}${addListHtml}</div>
+            ${manageBtnHtml}
+        </div>
+        ${listHtml}
     `;
 }
 
 function renderShoppingPanelInput(panel) {
     return /*html*/`
         <input class="add-input" placeholder="${t(panel.phKey)}"
-            onkeydown="if(event.key==='Enter') addItem('${panel.id}',this)">
+            onkeydown="if(event.key==='Enter') addShoppingItemToList('${panel.id}',this)">
+    `;
+}
+
+function promptAddShoppingList() {
+    const name = prompt(lang === 'no' ? 'Navn på ny handleliste:' : 'New shopping list name:');
+    if (name && name.trim()) addShoppingList(name.trim());
+}
+
+// ── meals ─────────────────────────────────────────────────────────────────────
+function renderMealsPanel(panel) {
+    const items = model.lists[panel.id] || [];
+    if (!items.length) return `<p class="empty-msg">${t(panel.emptyKey)}</p>`;
+
+    return items.map(meal => {
+        const isOpen = model.expandedMeal === meal.id;
+        const data = (() => { try { return JSON.parse(meal.extra || '{}'); } catch(e) { return {}; } })();
+        const ingredients = data.ingredients || [];
+        const instructions = data.instructions || '';
+        const tab = model.mealActiveTab[meal.id] || 'ingredients';
+
+        let bodyHtml = '';
+        if (isOpen) {
+            const ingTab = tab === 'ingredients';
+            const ingHtml = ingTab ? /*html*/`
+                <div class="meal-ingredients">
+                    <div class="meal-ing-list">
+                        ${ingredients.length
+                            ? ingredients.map(ing => /*html*/`
+                                <div class="meal-ing-row">
+                                    <span class="meal-ing-name">${escHtml(ing.name)}</span>
+                                    <div class="meal-ing-actions">
+                                        <button class="btn-meal-add-shop" title="${lang === 'no' ? 'Legg til i handleliste' : 'Add to shopping list'}"
+                                            onclick="addIngredientToShoppingList(${meal.id},${ing.id})">🛒</button>
+                                        <button class="btn-icon" onclick="removeMealIngredient(${meal.id},${ing.id})">✕</button>
+                                    </div>
+                                </div>
+                            `).join('')
+                            : `<span class="empty-msg">${t('empty_ingredients')}</span>`
+                        }
+                    </div>
+                    <div class="meal-ing-add">
+                        <input class="add-input meal-ing-input" placeholder="${t('ph_ingredient')}"
+                            onkeydown="if(event.key==='Enter') addMealIngredient(${meal.id},this)">
+                        ${ingredients.length ? /*html*/`
+                            <button class="btn btn-meal-all-shop" onclick="addAllIngredientsToShoppingList(${meal.id})">
+                                🛒 ${lang === 'no' ? 'Legg alle til handleliste' : 'Add all to shopping list'}
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            ` : '';
+
+            const instrHtml = !ingTab ? /*html*/`
+                <div class="meal-instructions">
+                    <textarea class="meal-instr-area" rows="6"
+                        placeholder="${t('ph_instructions')}"
+                        onblur="saveMealInstructions(${meal.id}, this.value)"
+                        oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+                    >${escHtml(instructions)}</textarea>
+                </div>
+            ` : '';
+
+            bodyHtml = /*html*/`
+                <div class="meal-body">
+                    <div class="meal-tabs">
+                        <button class="meal-tab ${ingTab ? 'active' : ''}" onclick="setMealTab(${meal.id},'ingredients')">
+                            🥕 ${t('tab_ingredients')} ${ingredients.length ? `<span class="meal-ing-count">${ingredients.length}</span>` : ''}
+                        </button>
+                        <button class="meal-tab ${!ingTab ? 'active' : ''}" onclick="setMealTab(${meal.id},'instructions')">
+                            📋 ${t('tab_instructions')}
+                        </button>
+                    </div>
+                    ${ingHtml}${instrHtml}
+                </div>
+            `;
+        }
+
+        const hasInstr = instructions && instructions.trim().length > 0;
+        return /*html*/`
+            <div class="meal-item ${isOpen ? 'meal-open' : ''}">
+                <div class="meal-header" onclick="toggleMeal(${meal.id})">
+                    <div class="meal-title-row">
+                        <span class="meal-name">${escHtml(meal.value)}</span>
+                        <div class="meal-meta">
+                            ${ingredients.length ? `<span class="meal-badge">${ingredients.length} ${lang === 'no' ? 'ingredienser' : 'ingredients'}</span>` : ''}
+                            ${hasInstr ? `<span class="meal-badge meal-badge-instr">📋</span>` : ''}
+                            <span class="meal-arrow">${isOpen ? '▲' : '▼'}</span>
+                        </div>
+                    </div>
+                    <button class="btn-icon meal-delete" onclick="event.stopPropagation();removeMeal(${meal.id})">✕</button>
+                </div>
+                ${bodyHtml}
+            </div>
+        `;
+    }).join('');
+}
+
+function renderMealsPanelInput(panel) {
+    return /*html*/`
+        <input class="add-input" placeholder="${t(panel.phKey)}"
+            onkeydown="if(event.key==='Enter') addMeal(this)">
     `;
 }
 
@@ -339,6 +469,11 @@ function renderPanelContent(panel) {
             return [
                 renderShoppingPanel(panel),
                 renderShoppingPanelInput(panel),
+            ];
+        case 'meals':
+            return [
+                renderMealsPanel(panel),
+                renderMealsPanelInput(panel),
             ];
         case 'notes':
             return [

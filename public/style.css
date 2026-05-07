@@ -1263,3 +1263,218 @@ body.lightmode .bill-date-input { color-scheme: light; }
 }
 .reminder-past .reminder-text { opacity: 0.55; }
 .reminder-today .reminder-text { font-weight: 600; }
+
+/* ── SHOPPING MULTI-LIST ─────────────────────────────────────────────────── */
+.shop-tabs-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+.shop-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    flex: 1;
+}
+.shop-tab {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    color: var(--text);
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.shop-tab:hover { border-color: var(--accent); color: var(--accent); }
+.shop-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 600;
+}
+.shop-tab-add {
+    background: transparent;
+    border: 1.5px dashed var(--border);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    color: var(--muted);
+    transition: all 0.15s;
+    line-height: 1;
+}
+.shop-tab-add:hover { border-color: var(--accent); color: var(--accent); }
+.shop-remove-list {
+    font-size: 0.85rem;
+    opacity: 0.5;
+    padding: 2px 4px;
+}
+.shop-remove-list:hover { opacity: 1; }
+
+/* ── MEALS PANEL ─────────────────────────────────────────────────────────── */
+.meal-item {
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+}
+.meal-item.meal-open { border-color: var(--accent); }
+
+.meal-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    user-select: none;
+}
+.meal-header:hover { background: rgba(var(--accent-rgb, 99,102,241), 0.05); }
+
+.meal-title-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+}
+.meal-name {
+    font-size: 0.95rem;
+    font-weight: 600;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.meal-meta {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+}
+.meal-badge {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    white-space: nowrap;
+}
+.meal-badge-instr { font-size: 0.8rem; padding: 1px 4px; }
+.meal-arrow { font-size: 0.7rem; color: var(--muted); }
+.meal-delete { opacity: 0.4; flex-shrink: 0; }
+.meal-delete:hover { opacity: 1; }
+
+.meal-body {
+    border-top: 1px solid var(--border);
+    background: var(--panel-bg, var(--bg));
+}
+
+.meal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+}
+.meal-tab {
+    flex: 1;
+    padding: 8px 12px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 0.82rem;
+    color: var(--muted);
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+}
+.meal-tab:hover { color: var(--text); }
+.meal-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    font-weight: 600;
+}
+.meal-ing-count {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 10px;
+    padding: 0 5px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.meal-ingredients { padding: 10px 12px; }
+.meal-ing-list { margin-bottom: 8px; }
+
+.meal-ing-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+}
+.meal-ing-row:last-child { border-bottom: none; }
+.meal-ing-name { flex: 1; font-size: 0.88rem; }
+.meal-ing-actions {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    opacity: 0.4;
+    transition: opacity 0.15s;
+}
+.meal-ing-row:hover .meal-ing-actions { opacity: 1; }
+
+.btn-meal-add-shop {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background 0.15s;
+    line-height: 1;
+}
+.btn-meal-add-shop:hover { background: rgba(var(--accent-rgb, 99,102,241), 0.15); }
+
+.meal-ing-add {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.btn-meal-all-shop {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+.btn-meal-all-shop:hover { opacity: 0.85; }
+
+.meal-instructions { padding: 10px 12px; }
+.meal-instr-area {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    color: var(--text);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    padding: 8px 10px;
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+}
+.meal-instr-area:focus { outline: 2px solid var(--accent); border-color: transparent; }

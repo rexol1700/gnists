@@ -39,7 +39,7 @@ async function doRegister(username, password, errorEl) {
 
 function doLogout() {
     API.logout();
-    model.lists = { interests: [], questions: [], learningGoals: [], Nøkkelord: [], bills: [], times: [], motivations: [], selling: [], shopping: [], notes: [], reminders: [] };
+    model.lists = { interests: [], questions: [], learningGoals: [], Nøkkelord: [], bills: [], times: [], motivations: [], selling: [], shopping: [], notes: [], reminders: [], meals: [] };
     model.tasks = [];
     changePage('landing');
 }
@@ -60,6 +60,7 @@ async function loadData() {
         model.lists.shopping      = data.lists.shopping      || [];
         model.lists.notes         = data.lists.notes         || [];
         model.lists.reminders     = data.lists.reminders     || [];
+        model.lists.meals         = data.lists.meals         || [];
         model.tasks = data.tasks || [];
         model.page = 'home';
     } catch (err) {
@@ -108,6 +109,7 @@ async function resetAll() {
             API.resetList('shopping'),
             API.resetList('notes'),
             API.resetList('reminders'),
+            API.resetList('meals'),
             API.resetList('tasks'),
         ]);
         model.lists.interests     = [];
@@ -121,6 +123,7 @@ async function resetAll() {
         model.lists.shopping      = [];
         model.lists.notes         = [];
         model.lists.reminders     = [];
+        model.lists.meals         = [];
         model.tasks               = [];
         updateView();
         toast(lang === 'no' ? 'Alt tømt' : 'All cleared');
@@ -392,11 +395,189 @@ function updateSellingStatus(id, listId, newStatus) {
 function toggleShoppingItem(id, listId, checked) {
     const item = model.lists[listId]?.find(i => i.id === id);
     if (!item) return;
-    item.extra = checked ? 'done' : '';
+    // extra format: "listName|done" or "listName|"
+    const parts = (item.extra || '').split('|');
+    const listName = parts[0] || model.activeShoppingList;
+    item.extra = `${listName}|${checked ? 'done' : ''}`;
     API.updateItem(id, { extra: item.extra })
         .then(() => updateView())
         .catch(err => toast(err.message, 'error'));
 }
+
+function getShoppingLists() {
+    const stored = localStorage.getItem('gnists_shopping_lists');
+    if (stored) {
+        try { return JSON.parse(stored); } catch(e) {}
+    }
+    return ['Handleliste'];
+}
+
+function saveShoppingLists(lists) {
+    localStorage.setItem('gnists_shopping_lists', JSON.stringify(lists));
+}
+
+function initShoppingLists() {
+    model.shoppingLists = getShoppingLists();
+    model.activeShoppingList = localStorage.getItem('gnists_active_list') || model.shoppingLists[0];
+    if (!model.shoppingLists.includes(model.activeShoppingList)) {
+        model.activeShoppingList = model.shoppingLists[0];
+    }
+}
+
+function setActiveShoppingList(name) {
+    model.activeShoppingList = name;
+    localStorage.setItem('gnists_active_list', name);
+    updateView();
+}
+
+function addShoppingList(name) {
+    if (!name || model.shoppingLists.includes(name)) return;
+    model.shoppingLists.push(name);
+    saveShoppingLists(model.shoppingLists);
+    setActiveShoppingList(name);
+}
+
+function removeShoppingList(name) {
+    if (model.shoppingLists.length <= 1) return;
+    model.shoppingLists = model.shoppingLists.filter(l => l !== name);
+    saveShoppingLists(model.shoppingLists);
+    if (model.activeShoppingList === name) {
+        model.activeShoppingList = model.shoppingLists[0];
+        localStorage.setItem('gnists_active_list', model.activeShoppingList);
+    }
+    updateView();
+}
+
+function addShoppingItemToList(listId, inputEl) {
+    const value = inputEl.value.trim();
+    if (!value) return;
+    inputEl.value = '';
+    const listName = model.activeShoppingList;
+    const extra = `${listName}|`;
+    API.addItem(listId, value, extra)
+        .then(res => {
+            model.lists[listId].push({ id: res.id, value, extra });
+            updateView();
+        })
+        .catch(err => toast(err.message, 'error'));
+}
+
+// ── MEALS ─────────────────────────────────────────────────────────────────────
+
+function toggleMeal(id) {
+    model.expandedMeal = model.expandedMeal === id ? null : id;
+    if (!model.mealActiveTab[id]) model.mealActiveTab[id] = 'ingredients';
+    updateView();
+}
+
+function setMealTab(id, tab) {
+    model.mealActiveTab[id] = tab;
+    updateView();
+}
+
+function getMealData(item) {
+    try { return JSON.parse(item.extra || '{}'); } catch(e) { return {}; }
+}
+
+async function addMeal(inputEl) {
+    const value = inputEl.value.trim();
+    if (!value) return;
+    inputEl.value = '';
+    const extra = JSON.stringify({ ingredients: [], instructions: '' });
+    try {
+        const res = await API.addItem('meals', value, extra);
+        model.lists.meals.push({ id: res.id, value, extra });
+        model.expandedMeal = res.id;
+        model.mealActiveTab[res.id] = 'ingredients';
+        updateView();
+    } catch(err) { toast(err.message, 'error'); }
+}
+
+async function removeMeal(id) {
+    try {
+        await API.deleteItem(id);
+        model.lists.meals = model.lists.meals.filter(m => m.id !== id);
+        if (model.expandedMeal === id) model.expandedMeal = null;
+        updateView();
+    } catch(err) { toast(err.message, 'error'); }
+}
+
+async function addMealIngredient(mealId, inputEl) {
+    const value = inputEl.value.trim();
+    if (!value) return;
+    inputEl.value = '';
+    const meal = model.lists.meals.find(m => m.id === mealId);
+    if (!meal) return;
+    const data = getMealData(meal);
+    data.ingredients = data.ingredients || [];
+    data.ingredients.push({ name: value, id: Date.now() });
+    meal.extra = JSON.stringify(data);
+    try {
+        await API.updateItem(mealId, { extra: meal.extra });
+        updateView();
+    } catch(err) { toast(err.message, 'error'); }
+}
+
+async function removeMealIngredient(mealId, ingId) {
+    const meal = model.lists.meals.find(m => m.id === mealId);
+    if (!meal) return;
+    const data = getMealData(meal);
+    data.ingredients = (data.ingredients || []).filter(i => i.id !== ingId);
+    meal.extra = JSON.stringify(data);
+    try {
+        await API.updateItem(mealId, { extra: meal.extra });
+        updateView();
+    } catch(err) { toast(err.message, 'error'); }
+}
+
+async function saveMealInstructions(mealId, value) {
+    const meal = model.lists.meals.find(m => m.id === mealId);
+    if (!meal) return;
+    const data = getMealData(meal);
+    data.instructions = value;
+    meal.extra = JSON.stringify(data);
+    try {
+        await API.updateItem(mealId, { extra: meal.extra });
+    } catch(err) { toast(err.message, 'error'); }
+}
+
+async function addIngredientToShoppingList(mealId, ingId) {
+    const meal = model.lists.meals.find(m => m.id === mealId);
+    if (!meal) return;
+    const data = getMealData(meal);
+    const ing = (data.ingredients || []).find(i => i.id === ingId);
+    if (!ing) return;
+    const listName = model.activeShoppingList;
+    const extra = `${listName}|`;
+    try {
+        const res = await API.addItem('shopping', ing.name, extra);
+        model.lists.shopping.push({ id: res.id, value: ing.name, extra });
+        toast((lang === 'no' ? 'Lagt til i ' : 'Added to ') + listName + ' ✓');
+        updateView();
+    } catch(err) { toast(err.message, 'error'); }
+}
+
+async function addAllIngredientsToShoppingList(mealId) {
+    const meal = model.lists.meals.find(m => m.id === mealId);
+    if (!meal) return;
+    const data = getMealData(meal);
+    const ings = data.ingredients || [];
+    if (!ings.length) return;
+    const listName = model.activeShoppingList;
+    try {
+        for (const ing of ings) {
+            const extra = `${listName}|`;
+            const res = await API.addItem('shopping', ing.name, extra);
+            model.lists.shopping.push({ id: res.id, value: ing.name, extra });
+        }
+        toast((lang === 'no' ? 'Alle ingredienser lagt til i ' : 'All ingredients added to ') + listName + ' ✓');
+        updateView();
+    } catch(err) { toast(err.message, 'error'); }
+}
+
+// Initialise shopping lists on load
+initShoppingLists();
+
 
 // ── NOTES ─────────────────────────────────────────────────────────────────────
 

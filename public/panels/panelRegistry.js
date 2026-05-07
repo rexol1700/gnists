@@ -62,6 +62,15 @@ const PANEL_REGISTRY = [
 
     // ── ADD NEW PANEL TYPES BELOW ──────────────────────────────────────────
     {
+        id: 'meals',
+        icon: '🍽️',
+        labelKey: 'sec_meals',
+        phKey: 'ph_meals',
+        emptyKey: 'empty_meals',
+        type: 'meals',
+        span: 2,
+    },
+    {
         id: 'bills',
         icon: '💸',
         labelKey: 'sec_bills',

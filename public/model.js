@@ -13,9 +13,10 @@ const model = {
         times:        [],  // [{ id, value, extra }]  extra = "time|recurrence"
         motivations:  [],  // [{ id, value }]
         selling:      [],  // [{ id, value, extra }]  extra = "price|status"
-        shopping:     [],  // [{ id, value, extra }]  extra = "done" | ""
+        shopping:     [],  // [{ id, value, extra }]  extra = "listName|done"
         notes:        [],  // [{ id, value, extra }]  extra = note body
         reminders:    [],  // [{ id, value, extra }]  extra = due date
+        meals:        [],  // [{ id, value, extra }]  extra = JSON {ingredients:[],instructions:''}
     },
     tasks: [], // [{ id, task, ischecked, subtasks: [{ id, task, ischecked }] }]
 
@@ -23,8 +24,14 @@ const model = {
     editingIndex: new Set(), // which keywords are expanded
     expandedTask: null,   // which task panel is open
     expandedNote: null,   // which note is expanded
+    expandedMeal: null,   // which meal is expanded
+    mealActiveTab: {},    // mealId -> 'ingredients' | 'instructions'
     isLightmode: false,
     addPanelOpen: false,  // is the add-panel picker open?
     boardManage: false,
     tileLayout: [],       // 2D array of rows: [[{id,flex},...], ...]  — loaded by layoutLoad()
+
+    // Shopping lists management
+    shoppingLists: ['Handleliste'],  // names of shopping lists
+    activeShoppingList: 'Handleliste', // currently selected list name
 };

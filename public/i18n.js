@@ -90,10 +90,20 @@ const LANGS = {
         sell_sold:        'Solgt',
         empty_selling:    'Ingenting til salgs ennå…',
 
-        // Shopping panel
+        // Shopping panel (multi-list)
         sec_shopping:     'Handleliste',
         ph_shopping:      'Legg til vare…',
         empty_shopping:   'Handlelisten er tom…',
+
+        // Meals panel
+        sec_meals:        'Måltider & Oppskrifter',
+        ph_meals:         'Legg til måltid…',
+        empty_meals:      'Ingen måltider ennå…',
+        tab_ingredients:  'Ingredienser',
+        tab_instructions: 'Fremgangsmåte',
+        ph_ingredient:    'Legg til ingrediens…',
+        ph_instructions:  'Skriv fremgangsmåte her…',
+        empty_ingredients:'Ingen ingredienser ennå…',
 
         // Notes panel
         sec_notes:        'Notater',
@@ -202,10 +212,20 @@ const LANGS = {
         sell_sold:        'Sold',
         empty_selling:    'Nothing for sale yet…',
 
-        // Shopping panel
+        // Shopping panel (multi-list)
         sec_shopping:     'Shopping list',
         ph_shopping:      'Add item…',
         empty_shopping:   'Shopping list is empty…',
+
+        // Meals panel
+        sec_meals:        'Meals & Recipes',
+        ph_meals:         'Add a meal…',
+        empty_meals:      'No meals yet…',
+        tab_ingredients:  'Ingredients',
+        tab_instructions: 'Instructions',
+        ph_ingredient:    'Add ingredient…',
+        ph_instructions:  'Write cooking instructions here…',
+        empty_ingredients:'No ingredients yet…',
 
         // Notes panel
         sec_notes:        'Notes',
