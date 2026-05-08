@@ -16,14 +16,28 @@ function homeView() {
             ? t('sub_count_one')
             : t('sub_count_many', { n: itemCount });
 
-    // Time-of-day greeting in the subbar
-    const hr = new Date().getHours();
-    const greet = hr < 12 ? t('sub_morning')
-                : hr < 18 ? t('sub_afternoon')
-                          : t('sub_evening');
+    // Headline: Weekday + time-of-day, e.g. "Tuesday afternoon."
+    // The time-of-day word is the italic-sage emphasis.
+    const now = new Date();
+    const hr = now.getHours();
+    const todKey = hr < 12 ? 'sub_morning'
+                 : hr < 18 ? 'sub_afternoon'
+                           : 'sub_evening';
+    const weekday = t('wd_' + now.getDay());
+    const tod = t(todKey);
+    const headline = `${escHtml(weekday)} <em>${escHtml(tod)}</em>.`;
+
+    // Date prefix for the .when line — "May 7" / "7. mai" depending on locale
+    const month = t('mo_' + now.getMonth());
+    const day = now.getDate();
+    const dateStr = lang === 'no' ? `${day}. ${month}` : `${month} ${day}`;
 
     const username = API.username || '';
     const avatar = username ? username.charAt(0).toUpperCase() : '·';
+
+    // Inactive panels available to add via the pill in the subbar
+    const inactive = layoutGetInactive();
+    const addPanelOpen = model.addPanelOpen && inactive.length > 0;
 
     return /*html*/`
     <div class="topbar">
@@ -36,15 +50,24 @@ function homeView() {
         <button class="btn-light ${darkOn ? 'on' : ''}"
                 onclick="themeToggle()"
                 title="${darkOn ? t('btn_dark') : t('btn_light')}"></button>
-        <button class="btn-reset-all" onclick="doResetAll(this)">
-            <span class="reset-icon">↺</span> ${t('btn_reset_all')}
-        </button>
         <button class="btn-logout" onclick="doLogout()">${t('btn_logout')}</button>
     </div>
 
     <div class="subbar">
-        <h1>${greet}</h1>
-        <span class="when">${countText}</span>
+        <h1>${headline}</h1>
+        <span class="when">${escHtml(dateStr)} · ${countText}</span>
+        <div class="right">
+            ${inactive.length > 0 ? `
+                <div class="add-board-wrap${addPanelOpen ? ' open' : ''}">
+                    <button class="pill add-board-pill ${addPanelOpen ? 'on' : ''}"
+                            onclick="event.stopPropagation(); toggleAddPanel();">
+                        ${addPanelOpen ? '×' : '+'}&nbsp;&nbsp;${t('btn_add_board').replace(/^\\+\\s*/, '')}
+                    </button>
+                    ${addPanelOpen ? renderAddBoardPicker(inactive) : ''}
+                </div>
+            ` : ''}
+            <button class="pill muted" onclick="doResetAll(this)">${t('btn_reset_all')}</button>
+        </div>
     </div>
 
     <div class="tile-board" id="tile-board">
@@ -54,16 +77,37 @@ function homeView() {
     `;
 }
 
+// Picker that drops down from the "+ Add a board" pill in the subbar
+function renderAddBoardPicker(inactive) {
+    const remaining = inactive.length;
+    const moreLabel = t('ap_more', { n: remaining });
+
+    return /*html*/`
+        <div class="add-board-picker" onclick="event.stopPropagation();">
+            <div class="add-board-picker-head">
+                <span>${t('ap_picker_title')}</span>
+                <span class="add-board-picker-meta">${moreLabel}</span>
+            </div>
+            <div class="add-board-picker-list">
+                ${inactive.map(p => `
+                    <button class="add-panel-option" onclick="layoutAddPanel('${p.id}')">
+                        <span class="apo-icon">${p.icon}</span>
+                        <span class="apo-label">${t(p.labelKey)}</span>
+                        <span class="apo-desc">${t(p.descKey)}</span>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
 // ── ROW RENDERING ─────────────────────────────────────────────────────────────
 
 function renderTileRow(row, rIdx) {
-    // Row 0 always gets the add-panel slot as its last cell
-    const addSlot = rIdx === 0 ? renderAddPanelInRow() : '';
     const cells = row.map((cell, cIdx) => renderTileCell(cell, rIdx, cIdx, row)).join('');
     return /*html*/`
         <div class="tile-row" data-row="${rIdx}">
             ${cells}
-            ${addSlot}
         </div>
     `;
 }
@@ -156,48 +200,6 @@ function renderBottomDropZone() {
             <span class="tile-bottom-drop-label">
                 ${lang === 'no' ? '↓ Slipp her for ny rad' : '↓ Drop here for new row'}
             </span>
-        </div>
-    `;
-}
-
-// ── ADD PANEL IN ROW 0 ───────────────────────────────────────────────────────
-
-function renderAddPanelInRow() {
-    const inactive = layoutGetInactive();
-    if (!inactive.length) return '';
-    const isOpen = model.addPanelOpen;
-    const remaining = inactive.length;
-
-    const picker = isOpen ? `
-        <div class="add-panel-picker">
-            ${inactive.map(p => `
-                <button class="add-panel-option" onclick="layoutAddPanel('${p.id}')">
-                    <span class="apo-icon">${p.icon}</span>
-                    <span class="apo-label">${t(p.labelKey)}</span>
-                </button>
-            `).join('')}
-        </div>
-    ` : '';
-
-    const moreLabel = lang === 'no'
-        ? `${remaining} TIL TILGJENGELIG`
-        : `${remaining} MORE AVAILABLE`;
-
-    return `
-        <div class="tile-panel tile-add-panel ${isOpen ? 'open' : ''}"
-             style="flex: 1 1 0%; min-width: 140px;"
-             onclick="${isOpen ? '' : 'toggleAddPanel()'}">
-            <div class="tile-panel-inner tile-add-inner">
-                <button class="add-panel-btn ${isOpen ? 'open' : ''}"
-                        onclick="event.stopPropagation(); toggleAddPanel()">
-                    +
-                </button>
-                <div class="add-panel-label ${isOpen ? '' : ''}">
-                    ${isOpen ? t('btn_pick_panel') : t('btn_add_panel_short')}
-                </div>
-                ${!isOpen ? `<div class="add-panel-meta">${moreLabel}</div>` : ''}
-                ${picker}
-            </div>
         </div>
     `;
 }

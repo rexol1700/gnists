@@ -85,12 +85,24 @@ const LANGS = {
         btn_user:         '{user}',
 
         // Subbar (greeting + summary)
-        sub_morning:      '<em>Morgen</em>.',
-        sub_afternoon:    '<em>Ettermiddag</em>.',
-        sub_evening:      '<em>Kveld</em>.',
+        sub_morning:      'morgen',
+        sub_afternoon:    'ettermiddag',
+        sub_evening:      'kveld',
         sub_count_one:    '1 element på tavlen',
         sub_count_many:   '{n} elementer på tavlen',
         sub_count_empty:  'tavlen er tom',
+        // Norwegian weekdays (Sunday=0)
+        wd_0:             'Søndag',
+        wd_1:             'Mandag',
+        wd_2:             'Tirsdag',
+        wd_3:             'Onsdag',
+        wd_4:             'Torsdag',
+        wd_5:             'Fredag',
+        wd_6:             'Lørdag',
+        // Norwegian short month names (Jan=0)
+        mo_0:  'jan', mo_1:  'feb', mo_2:  'mar', mo_3:  'apr',
+        mo_4:  'mai', mo_5:  'jun', mo_6:  'jul', mo_7:  'aug',
+        mo_8:  'sep', mo_9:  'okt', mo_10: 'nov', mo_11: 'des',
 
         // Sections
         sec_interests:    'Interesser',
@@ -114,6 +126,9 @@ const LANGS = {
         btn_add_panel:    '+ Legg til tavle',
         btn_add_panel_short: 'Legg til',
         btn_pick_panel:   'Velg tavle',
+        btn_add_board:    '+ Legg til tavle',
+        ap_more:          '{n} TIL TILGJENGELIG',
+        ap_picker_title:  'Velg en tavle',
 
         // Bills
         sec_bills:        'Regninger',
@@ -278,12 +293,24 @@ const LANGS = {
         btn_user:         '{user}',
 
         // Subbar
-        sub_morning:      '<em>Morning</em>.',
-        sub_afternoon:    '<em>Afternoon</em>.',
-        sub_evening:      '<em>Evening</em>.',
+        sub_morning:      'morning',
+        sub_afternoon:    'afternoon',
+        sub_evening:      'evening',
         sub_count_one:    '1 item on the board',
         sub_count_many:   '{n} items on the board',
         sub_count_empty:  'board is empty',
+        // English weekdays (Sunday=0)
+        wd_0:             'Sunday',
+        wd_1:             'Monday',
+        wd_2:             'Tuesday',
+        wd_3:             'Wednesday',
+        wd_4:             'Thursday',
+        wd_5:             'Friday',
+        wd_6:             'Saturday',
+        // English short month names (Jan=0)
+        mo_0:  'Jan', mo_1:  'Feb', mo_2:  'Mar', mo_3:  'Apr',
+        mo_4:  'May', mo_5:  'Jun', mo_6:  'Jul', mo_7:  'Aug',
+        mo_8:  'Sep', mo_9:  'Oct', mo_10: 'Nov', mo_11: 'Dec',
 
         // Sections
         sec_interests:    'Interests',
@@ -307,6 +334,9 @@ const LANGS = {
         btn_add_panel:    '+ Add a board',
         btn_add_panel_short: 'Add',
         btn_pick_panel:   'Choose panel',
+        btn_add_board:    '+ Add a board',
+        ap_more:          '{n} MORE AVAILABLE',
+        ap_picker_title:  'Pick a board',
 
         // Bills
         sec_bills:        'Bills',

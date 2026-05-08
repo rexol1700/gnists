@@ -19,6 +19,16 @@ function updateView() {
 model.tileLayout = layoutLoad();
 updateView();
 
+// Close the add-board dropdown when clicking anywhere outside it.
+// Both the pill and the picker stopPropagation, so a real outside click
+// reaches this handler with model.addPanelOpen still true.
+document.addEventListener('click', () => {
+    if (model.addPanelOpen) {
+        model.addPanelOpen = false;
+        updateView();
+    }
+});
+
 if (API.isLoggedIn()) {
     loadData().then(() => {
         if (localStorage.getItem('mb_onboarding_pending') === '1') {
