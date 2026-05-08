@@ -1,8 +1,7 @@
 // ── CLIENT STATE ──────────────────────────────────────────────────────────────
 const model = {
-    // page: landing | login | register | onboarding | loading | home
-    page: API.isLoggedIn() ? 'loading' : 'landing',
-
+    page: API.isLoggedIn() ? 'loading' : 'landing', // landing | login | register | loading | home
+    
     // Board data from server.
     // Add new list IDs here to match entries in panelRegistry.js
     lists: {
@@ -22,24 +21,17 @@ const model = {
     tasks: [], // [{ id, task, ischecked, subtasks: [{ id, task, ischecked }] }]
 
     // UI state
-    editingIndex: new Set(),
-    expandedTask: null,
-    expandedNote: null,
-    expandedMeal: null,
-    mealActiveTab: {},
-    isDarkmode: false,
-    addPanelOpen: false,
+    editingIndex: new Set(), // which keywords are expanded
+    expandedTask: null,   // which task panel is open
+    expandedNote: null,   // which note is expanded
+    expandedMeal: null,   // which meal is expanded
+    mealActiveTab: {},    // mealId -> 'ingredients' | 'instructions'
+    isLightmode: false,
+    addPanelOpen: false,  // is the add-panel picker open?
     boardManage: false,
-    tileLayout: [],
+    tileLayout: [],       // 2D array of rows: [[{id,flex},...], ...]  — loaded by layoutLoad()
 
-    // Shopping lists
-    shoppingLists: [],
-    activeShoppingList: '',
-
-    // ── ONBOARDING ────────────────────────────────────────────────────────────
-    // Step is 1..4. Picks is the set of panel IDs the user has selected
-    // (defaults defined in onboardingView). Spark is the first item they captured.
-    onboardingStep:    1,
-    onboardingPicks:   new Set(),
-    onboardingSpark:   { text: '', target: 'questions' },
+    // Shopping lists management
+    shoppingLists: ['Handleliste'],  // names of shopping lists
+    activeShoppingList: 'Handleliste', // currently selected list name
 };

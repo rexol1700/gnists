@@ -19,7 +19,7 @@ const API = {
             body: body ? JSON.stringify(body) : undefined,
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Something went wrong');
+        if (!res.ok) throw new Error(data.error || 'Noe gikk galt');
         return data;
     },
 
@@ -29,7 +29,7 @@ const API = {
         this.username = data.username;
         localStorage.setItem('mb_token', data.token);
         localStorage.setItem('mb_username', data.username);
-        return data; // includes { isNew: true }
+        return data;
     },
 
     async login(username, password) {
@@ -38,7 +38,7 @@ const API = {
         this.username = data.username;
         localStorage.setItem('mb_token', data.token);
         localStorage.setItem('mb_username', data.username);
-        return data; // includes { isNew: false }
+        return data;
     },
 
     logout() {

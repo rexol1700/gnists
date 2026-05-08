@@ -7,16 +7,8 @@ const initSqlJs = require('sql.js');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'myboard-secret-change-in-production';
-
-// New canonical DB path. If a legacy gnists.db exists in the same dir, use that
-// (so existing deployments migrate seamlessly without losing data).
-const DATA_DIR = path.join(__dirname, '../data');
-const DB_PATH_NEW = path.join(DATA_DIR, 'myboard.db');
-const DB_PATH_LEGACY = path.join(DATA_DIR, 'gnists.db');
-const DB_PATH = fs.existsSync(DB_PATH_NEW) ? DB_PATH_NEW
-              : fs.existsSync(DB_PATH_LEGACY) ? DB_PATH_LEGACY
-              : DB_PATH_NEW;
+const JWT_SECRET = process.env.JWT_SECRET || 'gnists-secret-change-in-production';
+const DB_PATH = path.join(__dirname, '../data/gnists.db');
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
@@ -46,7 +38,7 @@ async function initDB() {
         )
     `);
 
-    // Each list type per user: interests, questions, learningGoals, keywords, tasks, ...
+    // Each list type per user: interests, questions, learningGoals, keywords, tasks
     db.run(`
         CREATE TABLE IF NOT EXISTS items (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,44 +92,43 @@ function run(sql, params = []) {
 // ── AUTH MIDDLEWARE ───────────────────────────────────────────────────────────
 function auth(req, res, next) {
     const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Not signed in' });
+    if (!token) return res.status(401).json({ error: 'Ikke logget inn' });
     try {
         req.user = jwt.verify(token, JWT_SECRET);
         next();
     } catch {
-        res.status(401).json({ error: 'Invalid token' });
+        res.status(401).json({ error: 'Ugyldig token' });
     }
 }
 
 // ── AUTH ROUTES ───────────────────────────────────────────────────────────────
 app.post('/api/register', async (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Missing username or password' });
-    if (username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters' });
-    if (password.length < 4) return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    if (!username || !password) return res.status(400).json({ error: 'Mangler brukernavn eller passord' });
+    if (username.length < 3) return res.status(400).json({ error: 'Brukernavn må ha minst 3 tegn' });
+    if (password.length < 4) return res.status(400).json({ error: 'Passord må ha minst 4 tegn' });
 
     const existing = query('SELECT id FROM users WHERE username = ?', [username]);
-    if (existing.length > 0) return res.status(409).json({ error: 'Username is already taken' });
+    if (existing.length > 0) return res.status(409).json({ error: 'Brukernavn er allerede tatt' });
 
     const hashed = await bcrypt.hash(password, 10);
     const id = run('INSERT INTO users (username, password) VALUES (?, ?)', [username, hashed]);
 
     const token = jwt.sign({ id, username }, JWT_SECRET, { expiresIn: '7d' });
-    // isNew flag tells the client to start onboarding for this account
-    res.json({ token, username, isNew: true });
+    res.json({ token, username });
 });
 
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     const users = query('SELECT * FROM users WHERE username = ?', [username]);
-    if (!users.length) return res.status(401).json({ error: 'Wrong username or password' });
+    if (!users.length) return res.status(401).json({ error: 'Feil brukernavn eller passord' });
 
     const user = users[0];
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(401).json({ error: 'Wrong username or password' });
+    if (!match) return res.status(401).json({ error: 'Feil brukernavn eller passord' });
 
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, username: user.username, isNew: false });
+    res.json({ token, username: user.username });
 });
 
 // ── DATA ROUTES ───────────────────────────────────────────────────────────────
@@ -181,7 +172,7 @@ app.get('/api/data', auth, (req, res) => {
 app.post('/api/data/:listName', auth, (req, res) => {
     const { listName } = req.params;
     const { content, extra = '' } = req.body;
-    if (!content?.trim()) return res.status(400).json({ error: 'Empty content' });
+    if (!content?.trim()) return res.status(400).json({ error: 'Tomt innhold' });
 
     const count = query('SELECT COUNT(*) as c FROM items WHERE user_id = ? AND list_name = ?', [req.user.id, listName]);
     const pos = count[0].c;
@@ -199,7 +190,7 @@ app.patch('/api/data/item/:id', auth, (req, res) => {
     const { extra, content, ischecked } = req.body;
 
     const item = query('SELECT id FROM items WHERE id = ? AND user_id = ?', [id, req.user.id]);
-    if (!item.length) return res.status(403).json({ error: 'Not allowed' });
+    if (!item.length) return res.status(403).json({ error: 'Ikke tilgang' });
 
     if (extra !== undefined) run('UPDATE items SET extra = ? WHERE id = ?', [extra, id]);
     if (content !== undefined) run('UPDATE items SET content = ? WHERE id = ?', [content.trim(), id]);
@@ -212,7 +203,7 @@ app.patch('/api/data/item/:id', auth, (req, res) => {
 app.delete('/api/data/item/:id', auth, (req, res) => {
     const id = parseInt(req.params.id, 10);
     const item = query('SELECT id FROM items WHERE id = ? AND user_id = ?', [id, req.user.id]);
-    if (!item.length) return res.status(403).json({ error: 'Not allowed' });
+    if (!item.length) return res.status(403).json({ error: 'Ikke tilgang' });
     run('DELETE FROM subtasks WHERE task_id = ?', [id]);
     run('DELETE FROM items WHERE id = ?', [id]);
     res.json({ ok: true });
@@ -232,7 +223,7 @@ app.delete('/api/data/:listName', auth, (req, res) => {
 // Add task
 app.post('/api/tasks', auth, (req, res) => {
     const { content } = req.body;
-    if (!content?.trim()) return res.status(400).json({ error: 'Empty content' });
+    if (!content?.trim()) return res.status(400).json({ error: 'Tomt innhold' });
     const count = query('SELECT COUNT(*) as c FROM items WHERE user_id = ? AND list_name = ?', [req.user.id, 'tasks']);
     const id = run(
         'INSERT INTO items (user_id, list_name, content, extra, position) VALUES (?, ?, ?, ?, ?)',
@@ -246,7 +237,7 @@ app.post('/api/tasks/:taskId/subtasks', auth, (req, res) => {
     const taskId = parseInt(req.params.taskId, 10);
     const { content } = req.body;
     const task = query('SELECT id FROM items WHERE id = ? AND user_id = ? AND list_name = ?', [taskId, req.user.id, 'tasks']);
-    if (!task.length) return res.status(403).json({ error: 'Not allowed' });
+    if (!task.length) return res.status(403).json({ error: 'Ikke tilgang' });
     const id = run('INSERT INTO subtasks (task_id, content) VALUES (?, ?)', [taskId, content.trim()]);
     res.json({ id });
 });
@@ -269,5 +260,5 @@ app.get('*', (_, res) => res.sendFile(path.join(__dirname, '../public/index.html
 
 // ── START ─────────────────────────────────────────────────────────────────────
 initDB().then(() => {
-    app.listen(PORT, () => console.log(`MyBoard running on http://localhost:${PORT}`));
+    app.listen(PORT, () => console.log(`Gnists running on http://localhost:${PORT}`));
 });

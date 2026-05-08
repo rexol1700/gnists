@@ -1,50 +1,49 @@
 // ── HOME VIEW — TILED WINDOW MANAGER ─────────────────────────────────────────
 
 function homeView() {
-    const darkOn = model.isDarkmode;
+    const lightOn = model.isLightmode;
     const rows = model.tileLayout;
 
     const boardRows = rows.map((row, rIdx) => renderTileRow(row, rIdx)).join('');
     const dropZone = renderBottomDropZone();
 
-    // Item count for the subbar
-    const itemCount = Object.values(model.lists).reduce((s, arr) => s + arr.length, 0)
-        + model.tasks.length;
-    const countText = itemCount === 0
-        ? t('sub_count_empty')
-        : itemCount === 1
-            ? t('sub_count_one')
-            : t('sub_count_many', { n: itemCount });
+    // count items across all lists for the subbar
+    const itemCount = (() => {
+        let n = 0;
+        for (const k in model.lists) n += (model.lists[k] || []).length;
+        n += (model.tasks || []).length;
+        return n;
+    })();
 
-    // Time-of-day greeting in the subbar
-    const hr = new Date().getHours();
-    const greet = hr < 12 ? t('sub_morning')
-                : hr < 18 ? t('sub_afternoon')
-                          : t('sub_evening');
-
-    const username = API.username || '';
-    const avatar = username ? username.charAt(0).toUpperCase() : '·';
+    const initial = (API.username || '?').charAt(0).toUpperCase();
 
     return /*html*/`
-    <div class="topbar">
+    <div class="topbar mb-topbar">
         <div class="topbar-brand">
-            ${_mbMark(16)}
+            <span class="mb-mark"><i></i><i></i><i></i></span>
             <span>My<em>Board</em></span>
         </div>
-        ${langSwitcher()}
-        <button class="pill"><span class="av">${escHtml(avatar)}</span>${escHtml(username)}</button>
-        <button class="btn-light ${darkOn ? 'on' : ''}"
-                onclick="themeToggle()"
-                title="${darkOn ? t('btn_dark') : t('btn_light')}"></button>
-        <button class="btn-reset-all" onclick="doResetAll(this)">
-            <span class="reset-icon">↺</span> ${t('btn_reset_all')}
-        </button>
-        <button class="btn-logout" onclick="doLogout()">${t('btn_logout')}</button>
+        <div class="topbar-actions">
+            ${langSwitcher()}
+            <button class="pill" title="${API.username}">
+                <span class="av">${escHtml(initial)}</span>
+                <span>${escHtml(API.username || '')}</span>
+            </button>
+            <button class="pill muted btn-light ${lightOn ? 'on' : ''}"
+                onclick="lightToggle()"
+                title="${lightOn ? t('btn_dark') : t('btn_light')}">
+                ${lightOn ? '🌙' : '☀️'} <span>${t('btn_theme')}</span>
+            </button>
+            <button class="pill muted btn-reset-all" onclick="doResetAll(this)">
+                <span class="reset-icon">↺</span> <span>${t('btn_reset_all')}</span>
+            </button>
+            <button class="pill muted btn-logout" onclick="doLogout()">${t('btn_logout')}</button>
+        </div>
     </div>
 
     <div class="subbar">
-        <h1>${greet}</h1>
-        <span class="when">${countText}</span>
+        <h1>${t('home_greeting_pre')}<em>${t('home_greeting_em')}</em>${t('home_greeting_post')}</h1>
+        <span class="when">${escHtml(_formatToday())} · ${itemCount} ${t('home_items_on_board')}</span>
     </div>
 
     <div class="tile-board" id="tile-board">
@@ -52,6 +51,16 @@ function homeView() {
         ${dropZone}
     </div>
     `;
+}
+
+function _formatToday() {
+    const d = new Date();
+    if (lang === 'no') {
+        const m = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+        return `${d.getDate()}. ${m[d.getMonth()]}`;
+    }
+    const m = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return `${m[d.getMonth()]} ${d.getDate()}`;
 }
 
 // ── ROW RENDERING ─────────────────────────────────────────────────────────────
@@ -68,26 +77,17 @@ function renderTileRow(row, rIdx) {
     `;
 }
 
-function _panelItemCount(panel) {
-    if (panel.id === 'tasks') {
-        const done = model.tasks.filter(t => t.ischecked).length;
-        const total = model.tasks.length;
-        return total ? `${done}/${total}` : '';
-    }
-    const items = model.lists[panel.id] || [];
-    return items.length ? String(items.length).padStart(2, '0') : '';
-}
-
 function renderTileCell(cell, rIdx, cIdx, row) {
     const panel = PANEL_REGISTRY.find(p => p.id === cell.id);
     if (!panel) return '';
     const [bodyHtml, inputHtml] = renderPanelContent(panel);
     const isLast = cIdx === row.length - 1;
-    const count = _panelItemCount(panel);
+    const totalFlex = row.reduce((s, c) => s + c.flex, 0);
+    const pct = ((cell.flex / totalFlex) * 100).toFixed(3);
 
     return /*html*/`
         <div class="tile-panel"
-             style="flex: ${cell.flex} ${cell.flex} 0%; min-width: 160px;"
+             style="flex: ${cell.flex} ${cell.flex} 0%; min-width: 120px;"
              data-panel-id="${panel.id}"
              data-row="${rIdx}"
              data-col="${cIdx}"
@@ -95,22 +95,11 @@ function renderTileCell(cell, rIdx, cIdx, row) {
              ondrop="tileDrop(event, '${panel.id}')"
              ondragleave="tileDragLeave(event)">
 
-            <div class="tile-edge tile-edge-left"   data-edge="left"
-                 ondragover="tileEdgeOver(event,'left')"
-                 ondrop="tileEdgeDrop(event,'${panel.id}','left')"
-                 ondragleave="tileEdgeLeave(event)"></div>
-            <div class="tile-edge tile-edge-right"  data-edge="right"
-                 ondragover="tileEdgeOver(event,'right')"
-                 ondrop="tileEdgeDrop(event,'${panel.id}','right')"
-                 ondragleave="tileEdgeLeave(event)"></div>
-            <div class="tile-edge tile-edge-top"    data-edge="top"
-                 ondragover="tileEdgeOver(event,'top')"
-                 ondrop="tileEdgeDrop(event,'${panel.id}','top')"
-                 ondragleave="tileEdgeLeave(event)"></div>
-            <div class="tile-edge tile-edge-bottom" data-edge="bottom"
-                 ondragover="tileEdgeOver(event,'bottom')"
-                 ondrop="tileEdgeDrop(event,'${panel.id}','bottom')"
-                 ondragleave="tileEdgeLeave(event)"></div>
+            <!-- Drop edges (invisible hit areas) -->
+            <div class="tile-edge tile-edge-left"   data-edge="left"   ondragover="tileEdgeOver(event,'left')"   ondrop="tileEdgeDrop(event,'${panel.id}','left')"   ondragleave="tileEdgeLeave(event)"></div>
+            <div class="tile-edge tile-edge-right"  data-edge="right"  ondragover="tileEdgeOver(event,'right')"  ondrop="tileEdgeDrop(event,'${panel.id}','right')"  ondragleave="tileEdgeLeave(event)"></div>
+            <div class="tile-edge tile-edge-top"    data-edge="top"    ondragover="tileEdgeOver(event,'top')"    ondrop="tileEdgeDrop(event,'${panel.id}','top')"    ondragleave="tileEdgeLeave(event)"></div>
+            <div class="tile-edge tile-edge-bottom" data-edge="bottom" ondragover="tileEdgeOver(event,'bottom')" ondrop="tileEdgeDrop(event,'${panel.id}','bottom')" ondragleave="tileEdgeLeave(event)"></div>
 
             <div class="tile-panel-inner">
                 <div class="panel-header">
@@ -123,7 +112,6 @@ function renderTileCell(cell, rIdx, cIdx, row) {
                     <span class="panel-title"
                           ondblclick="layoutExpandInRow('${panel.id}')"
                           title="${lang === 'no' ? 'Dobbeltklikk for å utvide' : 'Double-click to expand'}">${t(panel.labelKey)}</span>
-                    ${count ? `<span class="panel-count">${count}</span>` : ''}
 
                     <div class="panel-controls">
                         <button class="panel-ctrl-btn" onclick="layoutExpandInRow('${panel.id}')"
@@ -159,14 +147,12 @@ function renderBottomDropZone() {
         </div>
     `;
 }
-
 // ── ADD PANEL IN ROW 0 ───────────────────────────────────────────────────────
 
 function renderAddPanelInRow() {
     const inactive = layoutGetInactive();
     if (!inactive.length) return '';
     const isOpen = model.addPanelOpen;
-    const remaining = inactive.length;
 
     const picker = isOpen ? `
         <div class="add-panel-picker">
@@ -179,23 +165,16 @@ function renderAddPanelInRow() {
         </div>
     ` : '';
 
-    const moreLabel = lang === 'no'
-        ? `${remaining} TIL TILGJENGELIG`
-        : `${remaining} MORE AVAILABLE`;
-
     return `
         <div class="tile-panel tile-add-panel ${isOpen ? 'open' : ''}"
-             style="flex: 1 1 0%; min-width: 140px;"
+             style="flex: 1 1 0%; min-width: 80px;"
              onclick="${isOpen ? '' : 'toggleAddPanel()'}">
             <div class="tile-panel-inner tile-add-inner">
                 <button class="add-panel-btn ${isOpen ? 'open' : ''}"
                         onclick="event.stopPropagation(); toggleAddPanel()">
-                    +
+                    <span class="add-panel-cross">+</span>
                 </button>
-                <div class="add-panel-label ${isOpen ? '' : ''}">
-                    ${isOpen ? t('btn_pick_panel') : t('btn_add_panel_short')}
-                </div>
-                ${!isOpen ? `<div class="add-panel-meta">${moreLabel}</div>` : ''}
+                <div class="add-panel-label ${isOpen ? '' : 'muted'}">${isOpen ? (lang === 'no' ? 'Velg panel' : 'Choose panel') : (lang === 'no' ? 'Legg til' : 'Add panel')}</div>
                 ${picker}
             </div>
         </div>
@@ -210,6 +189,7 @@ function tileDragStart(event, id) {
     _tileDragging = id;
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', id);
+    // Use the whole panel as drag ghost
     const panelEl = document.querySelector(`.tile-panel[data-panel-id="${id}"]`);
     if (panelEl && event.dataTransfer.setDragImage) {
         event.dataTransfer.setDragImage(panelEl, 20, 20);
@@ -235,15 +215,19 @@ function tileDragOver(event) {
     event.preventDefault();
 }
 
-function tileDragLeave(event) { /* edges handle their own leave */ }
+function tileDragLeave(event) {
+    // edges handle their own leave
+}
 
 function tileDrop(event, targetId) {
     event.preventDefault();
     event.stopPropagation();
     if (!_tileDragging || _tileDragging === targetId) return;
+    // Default: drop to the right of target
     layoutMovePanel(_tileDragging, targetId, 'right');
 }
 
+// Edge-specific drag
 function tileEdgeOver(event, edge) {
     if (!_tileDragging) return;
     event.preventDefault();
@@ -263,6 +247,7 @@ function tileEdgeDrop(event, targetId, edge) {
     layoutMovePanel(_tileDragging, targetId, edge);
 }
 
+// Bottom drop zone
 function tileBottomDragOver(event) {
     if (!_tileDragging) return;
     event.preventDefault();
@@ -277,6 +262,7 @@ function tileBottomDrop(event) {
     event.preventDefault();
     document.getElementById('tile-bottom-drop').classList.remove('active');
     if (!_tileDragging) return;
+    // Find the last panel in the last row and drop below it
     const rows = model.tileLayout;
     if (!rows.length) return;
     const lastRow = rows[rows.length - 1];
@@ -298,6 +284,7 @@ function tileResizeStart(event, id) {
     const rowWidth = row ? row.offsetWidth : window.innerWidth;
     _resizeState.rowWidth = rowWidth;
 
+    // Find current flex total
     const pos = layoutFindCell(model.tileLayout, id);
     if (!pos) return;
     _resizeState.row = pos.r;
@@ -315,7 +302,7 @@ function tileResizeMove(event) {
     const flexPerPx = _resizeState.totalFlex / _resizeState.rowWidth;
     const delta = dx * flexPerPx;
 
-    const rows = model.tileLayout.map(r => r.map(c => ({ ...c })));
+    const rows = model.tileLayout.map(r => r.map(c => ({...c})));
     const pos = layoutFindCell(rows, _resizeState.id);
     if (!pos) return;
     const row = rows[pos.r];
@@ -325,17 +312,25 @@ function tileResizeMove(event) {
 
     const newFlex = Math.max(0.5, _resizeState.startFlex + delta);
     const diffActual = newFlex - _resizeState.startFlex;
+    const origNeighFlex = _resizeState.totalFlex - _resizeState.startFlex - row.slice(0, pos.c).reduce((s,c2,i) => {
+        // just update cell and neighbour
+        return s;
+    }, 0);
 
     cell.flex = newFlex;
+    // find original neighbour flex
     const origN = model.tileLayout[pos.r][pos.c + 1].flex;
     neighbour.flex = Math.max(0.5, origN - diffActual);
 
     model.tileLayout = rows;
+    // Don't save on every mousemove — only on mouseup
     updateView();
 }
 
 function tileResizeEnd() {
-    if (_resizeState) layoutSave(model.tileLayout);
+    if (_resizeState) {
+        layoutSave(model.tileLayout);
+    }
     _resizeState = null;
     document.removeEventListener('mousemove', tileResizeMove);
     document.removeEventListener('mouseup', tileResizeEnd);
@@ -363,16 +358,14 @@ async function doResetAll(btn) {
         : 'Are you sure? This will clear everything.');
     if (!confirmed) return;
     const label = btn.querySelector('.reset-icon');
-    if (label) {
-        label.style.transform = 'rotate(-360deg)';
-        label.style.transition = 'transform 0.5s cubic-bezier(.4,0,.2,1)';
-        setTimeout(() => { label.style.transform = ''; label.style.transition = ''; }, 500);
-    }
+    label.style.transform = 'rotate(-360deg)';
+    label.style.transition = 'transform 0.5s cubic-bezier(.4,0,.2,1)';
+    setTimeout(() => { label.style.transform = ''; label.style.transition = ''; }, 500);
     await resetAll();
 }
 
 function escHtml(str) {
-    if (str === null || str === undefined) return '';
+    if (!str) return '';
     return String(str)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')

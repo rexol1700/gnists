@@ -1,8 +1,9 @@
 # MyBoard
 
-A quiet place for everything on your mind — questions, sparks, errands, plans. One board, all yours.
+A personal canvas for everything on your mind — questions, sparks, errands, plans.
+One board, all yours. Drag panels in, drag them around, let it grow with you.
 
-MyBoard is a personal canvas you grow over time. Capture interests, questions, goals, keywords, tasks, bills, reminders, and more. All data is saved per user on the server.
+> Rebranded from Gnists ✦. Same engine, new face.
 
 ## Deploy on Coolify
 
@@ -36,5 +37,14 @@ docker compose up
 - **Backend**: Node.js + Express
 - **Database**: SQLite via sql.js (zero native dependencies)
 - **Auth**: bcrypt passwords + JWT tokens (7 day sessions)
-- **Type**: Instrument Serif + Geist
 - **i18n**: Norwegian 🇳🇴 / English 🇬🇧 switcher
+
+## Design system
+
+MyBoard's visual direction is light, paper-and-ink, with sage as the brand
+accent and coral reserved for "now / urgent". The two accents share matched
+chroma and lightness (oklch L 0.68 / C 0.08) so they sit together quietly.
+
+- **Display & headlines**: Instrument Serif (italic for emphasis)
+- **UI & body**: Geist
+- **Meta & code**: Geist Mono
