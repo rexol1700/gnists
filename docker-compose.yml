@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  gnists:
+  myboard:
     build: .
     ports:
       - "3000:3000"
@@ -10,8 +10,8 @@ services:
       - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
     volumes:
       # Persist the SQLite database across restarts
-      - gnists_data:/app/data
+      - myboard_data:/app/data
     restart: unless-stopped
 
 volumes:
-  gnists_data:
+  myboard_data:

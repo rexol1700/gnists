@@ -1,14 +1,8 @@
 // ── TILED BOARD LAYOUT ────────────────────────────────────────────────────────
-// Hyperdynamic tiled window manager layout.
-//
 // model.tileLayout = array of rows. Each row = [{ id, flex }, ...]
 // flex = proportional width share within the row.
-//
-// Row 0 is always: questions(3) + Nøkkelord(2) [+ new panels equally sized]
-// New panels pop into row 0 next to Nøkkelord.
-// Rows beyond 0 created by dragging a panel to the bottom drop zone.
 
-const LAYOUT_KEY = 'gnists_tile_layout_v3';
+const LAYOUT_KEY = 'mb_tile_layout_v1';
 
 function layoutDefault() {
     return [
@@ -17,6 +11,26 @@ function layoutDefault() {
             { id: 'Nøkkelord', flex: 2 },
         ]
     ];
+}
+
+// Build a fresh layout from a list of panel IDs (used after onboarding).
+// Splits the panels across two rows for a balanced first impression.
+function layoutFromPicks(ids) {
+    const valid = PANEL_REGISTRY.map(p => p.id);
+    const picks = ids.filter(id => valid.includes(id));
+    if (picks.length === 0) return layoutDefault();
+
+    if (picks.length <= 3) {
+        // Single row, first cell gets a wider share
+        return [picks.map((id, i) => ({ id, flex: i === 0 ? 2 : 1 }))];
+    }
+
+    // Two rows. First row holds half (rounded up) — favouring a wide leader cell
+    // for the first board (typically Questions). Second row gets the rest.
+    const half = Math.ceil(picks.length / 2);
+    const r1 = picks.slice(0, half).map((id, i) => ({ id, flex: i === 0 ? 2 : 1 }));
+    const r2 = picks.slice(half).map(id => ({ id, flex: 1 }));
+    return r2.length ? [r1, r2] : [r1];
 }
 
 function layoutLoad() {
@@ -54,10 +68,9 @@ function layoutFindCell(rows, id) {
     return null;
 }
 
-// Add panel: inserts next to Nøkkelord in row 0, redistributes flex
 function layoutAddPanel(id) {
     if (layoutGetAllIds().includes(id)) return;
-    const rows = model.tileLayout.map(r => r.map(c => ({...c})));
+    const rows = model.tileLayout.map(r => r.map(c => ({ ...c })));
 
     const row0 = rows[0];
     const kwIdx = row0.findIndex(c => c.id === 'Nøkkelord');
@@ -89,22 +102,24 @@ function layoutRemovePanel(id) {
     updateView();
 }
 
-// Move panel — edge: 'left'|'right'|'top'|'bottom' relative to target
 function layoutMovePanel(fromId, toId, edge) {
     if (fromId === toId) return;
-    let rows = model.tileLayout.map(r => r.map(c => ({...c})));
+    let rows = model.tileLayout.map(r => r.map(c => ({ ...c })));
 
     const from = layoutFindCell(rows, fromId);
     if (!from) return;
     const fromCell = { ...rows[from.r][from.c] };
 
-    // Remove from old position
     rows[from.r].splice(from.c, 1);
     if (rows[from.r].length === 0) rows.splice(from.r, 1);
 
-    // Re-find target after removal
     const to = layoutFindCell(rows, toId);
-    if (!to) { model.tileLayout = rows.filter(r=>r.length>0); layoutSave(model.tileLayout); updateView(); return; }
+    if (!to) {
+        model.tileLayout = rows.filter(r => r.length > 0);
+        layoutSave(model.tileLayout);
+        updateView();
+        return;
+    }
 
     if (edge === 'bottom') {
         const rowTotalFlex = rows[to.r].reduce((s, c) => s + c.flex, 0);
@@ -123,9 +138,8 @@ function layoutMovePanel(fromId, toId, edge) {
     updateView();
 }
 
-// Resize panel by adjusting flex within its row
 function layoutResizeFlex(id, delta) {
-    const rows = model.tileLayout.map(r => r.map(c => ({...c})));
+    const rows = model.tileLayout.map(r => r.map(c => ({ ...c })));
     const pos = layoutFindCell(rows, id);
     if (!pos) return;
     const row = rows[pos.r];
@@ -141,9 +155,8 @@ function layoutResizeFlex(id, delta) {
     updateView();
 }
 
-// Double-click panel title: expand in row (75%) or restore equal
 function layoutExpandInRow(id) {
-    const rows = model.tileLayout.map(r => r.map(c => ({...c})));
+    const rows = model.tileLayout.map(r => r.map(c => ({ ...c })));
     const pos = layoutFindCell(rows, id);
     if (!pos) return;
     const row = rows[pos.r];
