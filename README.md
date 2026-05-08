@@ -1,7 +1,8 @@
-# Gnists ✦
+# MyBoard
 
-A personal learning board — capture sparks of curiosity before they disappear.
-Collect interests, questions, goals, keywords and tasks. All data is saved per user on the server.
+A quiet place for everything on your mind — questions, sparks, errands, plans. One board, all yours.
+
+MyBoard is a personal canvas you grow over time. Capture interests, questions, goals, keywords, tasks, bills, reminders, and more. All data is saved per user on the server.
 
 ## Deploy on Coolify
 
@@ -35,4 +36,5 @@ docker compose up
 - **Backend**: Node.js + Express
 - **Database**: SQLite via sql.js (zero native dependencies)
 - **Auth**: bcrypt passwords + JWT tokens (7 day sessions)
+- **Type**: Instrument Serif + Geist
 - **i18n**: Norwegian 🇳🇴 / English 🇬🇧 switcher

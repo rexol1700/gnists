@@ -21,6 +21,7 @@ async function doLogin(username, password, errorEl) {
     try {
         await API.login(username, password);
         await loadData();
+        // Existing accounts always go straight to the home board
         changePage('home');
     } catch (err) {
         errorEl.textContent = err.message;
@@ -29,9 +30,14 @@ async function doLogin(username, password, errorEl) {
 
 async function doRegister(username, password, errorEl) {
     try {
-        await API.register(username, password);
+        const res = await API.register(username, password);
         await loadData();
-        changePage('home');
+        // Brand-new accounts go through onboarding; everyone else lands on home.
+        if (res && res.isNew) {
+            obStart();
+        } else {
+            changePage('home');
+        }
     } catch (err) {
         errorEl.textContent = err.message;
     }
@@ -39,6 +45,7 @@ async function doRegister(username, password, errorEl) {
 
 function doLogout() {
     API.logout();
+    localStorage.removeItem('mb_onboarding_pending');
     model.lists = { interests: [], questions: [], learningGoals: [], Nøkkelord: [], bills: [], times: [], motivations: [], selling: [], shopping: [], notes: [], reminders: [], meals: [] };
     model.tasks = [];
     changePage('landing');
@@ -61,13 +68,126 @@ async function loadData() {
         model.lists.notes         = data.lists.notes         || [];
         model.lists.reminders     = data.lists.reminders     || [];
         model.lists.meals         = data.lists.meals         || [];
-        model.tasks = data.tasks || [];
-        model.page = 'home';
+        model.tasks               = data.tasks               || [];
     } catch (err) {
         // Token expired or invalid
         API.logout();
         changePage('landing');
     }
+}
+
+// ── ONBOARDING ────────────────────────────────────────────────────────────────
+
+function obStart() {
+    // Seed picks with the registry's defaultOn entries
+    model.onboardingStep = 1;
+    model.onboardingPicks = new Set(
+        PANEL_REGISTRY.filter(p => p.defaultOn).map(p => p.id)
+    );
+    model.onboardingSpark = { text: '', target: 'questions' };
+    model.page = 'onboarding';
+    // Mark onboarding as in-progress so a page reload returns the user here
+    // instead of dropping them on a blank board with no picks made.
+    localStorage.setItem('mb_onboarding_pending', '1');
+    updateView();
+}
+
+function obNext() {
+    // Capture any in-progress field state from the DOM before advancing.
+    if (model.onboardingStep === 3) {
+        const ta = document.getElementById('ob-spark-text');
+        if (ta) model.onboardingSpark.text = ta.value;
+        const sel = document.getElementById('ob-spark-target');
+        if (sel) model.onboardingSpark.target = sel.value;
+    }
+
+    if (model.onboardingStep < 4) {
+        model.onboardingStep += 1;
+        updateView();
+    } else {
+        obFinish();
+    }
+}
+
+function obBack() {
+    if (model.onboardingStep > 1) {
+        model.onboardingStep -= 1;
+        updateView();
+    }
+}
+
+function obSkip() {
+    // Skip means: bypass onboarding, use the default layout, no spark captured.
+    model.tileLayout = layoutDefault();
+    layoutSave(model.tileLayout);
+    localStorage.removeItem('mb_onboarding_pending');
+    changePage('home');
+}
+
+function obToggleBoard(id) {
+    if (model.onboardingPicks.has(id)) {
+        model.onboardingPicks.delete(id);
+    } else {
+        model.onboardingPicks.add(id);
+    }
+    updateView();
+}
+
+function obSetSparkText(value) {
+    model.onboardingSpark.text = value;
+}
+
+function obSetSparkTarget(value) {
+    model.onboardingSpark.target = value;
+    updateView();
+}
+
+function obUseSuggestion(text) {
+    model.onboardingSpark.text = text;
+    updateView();
+    // Focus textarea after re-render
+    requestAnimationFrame(() => {
+        const ta = document.getElementById('ob-spark-text');
+        if (ta) {
+            ta.focus();
+            ta.setSelectionRange(ta.value.length, ta.value.length);
+        }
+    });
+}
+
+async function obFinish() {
+    // 1) Build the layout from the user's picks
+    const picks = Array.from(model.onboardingPicks);
+    // Always include questions as a backbone if they picked nothing meaningful
+    const ordered = PANEL_REGISTRY
+        .map(p => p.id)
+        .filter(id => picks.includes(id));
+    const finalIds = ordered.length ? ordered : ['questions'];
+
+    model.tileLayout = layoutFromPicks(finalIds);
+    layoutSave(model.tileLayout);
+
+    // 2) Save the spark, if any, into the chosen list
+    const spark = (model.onboardingSpark.text || '').trim();
+    const target = model.onboardingSpark.target;
+    if (spark && finalIds.includes(target)) {
+        try {
+            if (target === 'tasks') {
+                const r = await API.addTask(spark);
+                model.tasks.push({ id: r.id, task: spark, ischecked: false, subtasks: [] });
+            } else {
+                const r = await API.addItem(target, spark);
+                if (!model.lists[target]) model.lists[target] = [];
+                model.lists[target].push({ id: r.id, value: spark, extra: '' });
+            }
+        } catch (err) {
+            toast(err.message, 'error');
+        }
+    }
+
+    // 3) Done. Show the board.
+    localStorage.removeItem('mb_onboarding_pending');
+    changePage('home');
 }
 
 // ── SIMPLE LISTS ──────────────────────────────────────────────────────────────
@@ -112,19 +232,8 @@ async function resetAll() {
             API.resetList('meals'),
             API.resetList('tasks'),
         ]);
-        model.lists.interests     = [];
-        model.lists.questions     = [];
-        model.lists.learningGoals = [];
-        model.lists.Nøkkelord     = [];
-        model.lists.bills         = [];
-        model.lists.times         = [];
-        model.lists.motivations   = [];
-        model.lists.selling       = [];
-        model.lists.shopping      = [];
-        model.lists.notes         = [];
-        model.lists.reminders     = [];
-        model.lists.meals         = [];
-        model.tasks               = [];
+        for (const k of Object.keys(model.lists)) model.lists[k] = [];
+        model.tasks = [];
         updateView();
         toast(lang === 'no' ? 'Alt tømt' : 'All cleared');
     } catch (err) {
@@ -179,7 +288,7 @@ function editKeyword(index) {
 async function saveMeaning(id, listIndex, value) {
     const item = model.lists.Nøkkelord[listIndex];
     if (!item) return;
-    if (item.extra === value) return; // no change
+    if (item.extra === value) return;
     item.extra = value;
     try {
         await API.updateItem(id, { extra: value });
@@ -273,18 +382,26 @@ async function removeSubtask(taskId, subtaskId) {
 
 // ── UI TOGGLES ────────────────────────────────────────────────────────────────
 
-function lightToggle() {
-    model.isLightmode = !model.isLightmode;
-    document.body.classList.toggle('lightmode', model.isLightmode);
+// In the new design, the default theme is light (paper). The toggle puts the
+// app into dark mode for those who prefer it.
+function themeToggle() {
+    model.isDarkmode = !model.isDarkmode;
+    document.body.classList.toggle('darkmode', model.isDarkmode);
+    localStorage.setItem('mb_dark', model.isDarkmode ? '1' : '0');
     const btn = document.querySelector('.btn-light');
-    if (btn) btn.classList.toggle('on', model.isLightmode);
+    if (btn) btn.classList.toggle('on', model.isDarkmode);
 }
+// Backwards-compatible alias for any old onclick handlers
+const lightToggle = themeToggle;
 
-// ── INIT ──────────────────────────────────────────────────────────────────────
-
-if (API.isLoggedIn()) {
-    // Will be called from views.js after first render
-}
+// Restore theme preference on load
+(function applyStoredTheme() {
+    const stored = localStorage.getItem('mb_dark');
+    if (stored === '1') {
+        model.isDarkmode = true;
+        document.body.classList.add('darkmode');
+    }
+})();
 
 // ── BILLS ─────────────────────────────────────────────────────────────────────
 
@@ -333,12 +450,13 @@ function addReminder(listId) {
         .catch(err => toast(err.message, 'error'));
 }
 
+// Lang switcher (used in topbar / auth headers)
 function langSwitcher() {
     return /*html*/`
-        <div class="lang-switcher">
-            <button class="lang-btn ${lang === 'no' ? 'active' : ''}" onclick="setLang('no')">🇳🇴 NO</button>
-            <button class="lang-btn ${lang === 'en' ? 'active' : ''}" onclick="setLang('en')">🇬🇧 EN</button>
-        </div>
+        <span class="lang-switch">
+            <button class="${lang === 'no' ? 'on' : ''}" onclick="setLang('no')">NO</button>
+            <button class="${lang === 'en' ? 'on' : ''}" onclick="setLang('en')">EN</button>
+        </span>
     `;
 }
 
@@ -395,7 +513,6 @@ function updateSellingStatus(id, listId, newStatus) {
 function toggleShoppingItem(id, listId, checked) {
     const item = model.lists[listId]?.find(i => i.id === id);
     if (!item) return;
-    // extra format: "listName|done" or "listName|"
     const parts = (item.extra || '').split('|');
     const listName = parts[0] || model.activeShoppingList;
     item.extra = `${listName}|${checked ? 'done' : ''}`;
@@ -405,20 +522,20 @@ function toggleShoppingItem(id, listId, checked) {
 }
 
 function getShoppingLists() {
-    const stored = localStorage.getItem('gnists_shopping_lists');
+    const stored = localStorage.getItem('mb_shopping_lists');
     if (stored) {
-        try { return JSON.parse(stored); } catch(e) {}
+        try { return JSON.parse(stored); } catch (e) {}
     }
-    return ['Handleliste'];
+    return [t('shopping_default')];
 }
 
 function saveShoppingLists(lists) {
-    localStorage.setItem('gnists_shopping_lists', JSON.stringify(lists));
+    localStorage.setItem('mb_shopping_lists', JSON.stringify(lists));
 }
 
 function initShoppingLists() {
     model.shoppingLists = getShoppingLists();
-    model.activeShoppingList = localStorage.getItem('gnists_active_list') || model.shoppingLists[0];
+    model.activeShoppingList = localStorage.getItem('mb_active_list') || model.shoppingLists[0];
     if (!model.shoppingLists.includes(model.activeShoppingList)) {
         model.activeShoppingList = model.shoppingLists[0];
     }
@@ -426,7 +543,7 @@ function initShoppingLists() {
 
 function setActiveShoppingList(name) {
     model.activeShoppingList = name;
-    localStorage.setItem('gnists_active_list', name);
+    localStorage.setItem('mb_active_list', name);
     updateView();
 }
 
@@ -443,7 +560,7 @@ function removeShoppingList(name) {
     saveShoppingLists(model.shoppingLists);
     if (model.activeShoppingList === name) {
         model.activeShoppingList = model.shoppingLists[0];
-        localStorage.setItem('gnists_active_list', model.activeShoppingList);
+        localStorage.setItem('mb_active_list', model.activeShoppingList);
     }
     updateView();
 }
@@ -476,7 +593,7 @@ function setMealTab(id, tab) {
 }
 
 function getMealData(item) {
-    try { return JSON.parse(item.extra || '{}'); } catch(e) { return {}; }
+    try { return JSON.parse(item.extra || '{}'); } catch (e) { return {}; }
 }
 
 async function addMeal(inputEl) {
@@ -490,7 +607,7 @@ async function addMeal(inputEl) {
         model.expandedMeal = res.id;
         model.mealActiveTab[res.id] = 'ingredients';
         updateView();
-    } catch(err) { toast(err.message, 'error'); }
+    } catch (err) { toast(err.message, 'error'); }
 }
 
 async function removeMeal(id) {
@@ -499,7 +616,7 @@ async function removeMeal(id) {
         model.lists.meals = model.lists.meals.filter(m => m.id !== id);
         if (model.expandedMeal === id) model.expandedMeal = null;
         updateView();
-    } catch(err) { toast(err.message, 'error'); }
+    } catch (err) { toast(err.message, 'error'); }
 }
 
 async function addMealIngredient(mealId, inputEl) {
@@ -515,7 +632,7 @@ async function addMealIngredient(mealId, inputEl) {
     try {
         await API.updateItem(mealId, { extra: meal.extra });
         updateView();
-    } catch(err) { toast(err.message, 'error'); }
+    } catch (err) { toast(err.message, 'error'); }
 }
 
 async function removeMealIngredient(mealId, ingId) {
@@ -527,7 +644,7 @@ async function removeMealIngredient(mealId, ingId) {
     try {
         await API.updateItem(mealId, { extra: meal.extra });
         updateView();
-    } catch(err) { toast(err.message, 'error'); }
+    } catch (err) { toast(err.message, 'error'); }
 }
 
 async function saveMealInstructions(mealId, value) {
@@ -538,7 +655,7 @@ async function saveMealInstructions(mealId, value) {
     meal.extra = JSON.stringify(data);
     try {
         await API.updateItem(mealId, { extra: meal.extra });
-    } catch(err) { toast(err.message, 'error'); }
+    } catch (err) { toast(err.message, 'error'); }
 }
 
 async function addIngredientToShoppingList(mealId, ingId) {
@@ -554,7 +671,7 @@ async function addIngredientToShoppingList(mealId, ingId) {
         model.lists.shopping.push({ id: res.id, value: ing.name, extra });
         toast((lang === 'no' ? 'Lagt til i ' : 'Added to ') + listName + ' ✓');
         updateView();
-    } catch(err) { toast(err.message, 'error'); }
+    } catch (err) { toast(err.message, 'error'); }
 }
 
 async function addAllIngredientsToShoppingList(mealId) {
@@ -572,12 +689,11 @@ async function addAllIngredientsToShoppingList(mealId) {
         }
         toast((lang === 'no' ? 'Alle ingredienser lagt til i ' : 'All ingredients added to ') + listName + ' ✓');
         updateView();
-    } catch(err) { toast(err.message, 'error'); }
+    } catch (err) { toast(err.message, 'error'); }
 }
 
 // Initialise shopping lists on load
 initShoppingLists();
-
 
 // ── NOTES ─────────────────────────────────────────────────────────────────────
 
