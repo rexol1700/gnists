@@ -2346,6 +2346,10 @@ ul {
     from { transform: rotate(0deg); }
     to   { transform: rotate(360deg); }
 }
+.btn-ai .ai-robot {
+    display: block;
+    margin: auto;
+}
 
 /* ── QUESTIONS ─────────────────────────────────────────────────────────────── */
 .question-item {

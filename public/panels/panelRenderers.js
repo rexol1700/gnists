@@ -3,6 +3,21 @@
 // one based on panel.type. To support a new type, add a case here + an entry
 // in panelRegistry.js.
 
+function robotIcon() {
+    return /*html*/`<svg class="ai-robot" viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M8 1.6v1.8"/>
+        <circle cx="8" cy="1.4" r="0.7" fill="currentColor" stroke="none"/>
+        <rect x="3" y="3.6" width="10" height="7.4" rx="1.6"/>
+        <circle cx="6" cy="7.2" r="0.95" fill="currentColor" stroke="none"/>
+        <circle cx="10" cy="7.2" r="0.95" fill="currentColor" stroke="none"/>
+        <path d="M6.2 9.4h3.6"/>
+        <path d="M3 6.5H1.5"/>
+        <path d="M13 6.5h1.5"/>
+        <path d="M5.5 11v1.6"/>
+        <path d="M10.5 11v1.6"/>
+    </svg>`;
+}
+
 // ── simple ────────────────────────────────────────────────────────────────────
 function renderSimplePanel(panel) {
     const items = model.lists[panel.id] || [];
@@ -41,7 +56,7 @@ function renderKeywordsPanel(panel) {
                     <span class="kw-meta">
                         <button class="btn-icon btn-ai ${loading ? 'ai-loading' : ''}" title="${t('ai_define')}"
                             onclick="event.stopPropagation();aiDefineKeyword(${item.id},${idx})"
-                            ${loading ? 'disabled' : ''}>${loading ? '◌' : '🤖'}</button>
+                            ${loading ? 'disabled' : ''}>${loading ? '◌' : robotIcon()}</button>
                         <span class="kw-arrow">${isOpen ? '▲' : '▼'}</span>
                         <button class="btn-icon kw-delete" onclick="event.stopPropagation();removeItem('${panel.id}',${item.id})">✕</button>
                     </span>
@@ -421,7 +436,7 @@ function renderQuestionsPanel(panel) {
                     <span class="question-meta">
                         <button class="btn-icon btn-ai ${loading ? 'ai-loading' : ''}" title="${t('ai_answer')}"
                             onclick="event.stopPropagation();aiAnswerQuestion(${item.id})"
-                            ${loading ? 'disabled' : ''}>${loading ? '◌' : '🤖'}</button>
+                            ${loading ? 'disabled' : ''}>${loading ? '◌' : robotIcon()}</button>
                         ${hasAnswer ? `<span class="question-arrow">${isOpen ? '▲' : '▼'}</span>` : ''}
                         <button class="btn-icon" onclick="event.stopPropagation();removeItem('${panel.id}',${item.id})">✕</button>
                     </span>
