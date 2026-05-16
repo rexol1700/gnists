@@ -29,6 +29,7 @@ function renderKeywordsPanel(panel) {
     return items.map((item, idx) => {
         const isOpen = model.editingIndex.has(idx);
         const hasMeaning = item.extra && item.extra.trim();
+        const loading = model.aiLoading.has(item.id);
         return /*html*/`
             <div class="keyword-block ${isOpen ? 'kw-open' : 'kw-closed'}">
                 <div class="kw-header" onclick="editKeyword(${idx})">
@@ -38,6 +39,9 @@ function renderKeywordsPanel(panel) {
                         ${hasMeaning && !isOpen ? `<span class="kw-preview">${escHtml(item.extra.slice(0, 38))}${item.extra.length > 38 ? '…' : ''}</span>` : ''}
                     </span>
                     <span class="kw-meta">
+                        <button class="btn-icon btn-ai ${loading ? 'ai-loading' : ''}" title="${t('ai_define')}"
+                            onclick="event.stopPropagation();aiDefineKeyword(${item.id},${idx})"
+                            ${loading ? 'disabled' : ''}>${loading ? '◌' : '🤖'}</button>
                         <span class="kw-arrow">${isOpen ? '▲' : '▼'}</span>
                         <button class="btn-icon kw-delete" onclick="event.stopPropagation();removeItem('${panel.id}',${item.id})">✕</button>
                     </span>
@@ -401,6 +405,42 @@ function renderNotesPanelInput(panel) {
     `;
 }
 
+// ── questions ─────────────────────────────────────────────────────────────────
+// Each question: { id, value, extra }  value = question, extra = AI answer
+function renderQuestionsPanel(panel) {
+    const items = model.lists[panel.id] || [];
+    if (!items.length) return `<li class="empty-msg">${t(panel.emptyKey)}</li>`;
+    return items.map(item => {
+        const isOpen = model.expandedQuestion === item.id;
+        const hasAnswer = item.extra && item.extra.trim();
+        const loading = model.aiLoading.has(item.id);
+        return /*html*/`
+            <div class="question-item ${isOpen ? 'q-open' : ''}">
+                <div class="question-header" onclick="toggleQuestion(${item.id})">
+                    <span class="question-text">${escHtml(item.value)}</span>
+                    <span class="question-meta">
+                        <button class="btn-icon btn-ai ${loading ? 'ai-loading' : ''}" title="${t('ai_answer')}"
+                            onclick="event.stopPropagation();aiAnswerQuestion(${item.id})"
+                            ${loading ? 'disabled' : ''}>${loading ? '◌' : '🤖'}</button>
+                        ${hasAnswer ? `<span class="question-arrow">${isOpen ? '▲' : '▼'}</span>` : ''}
+                        <button class="btn-icon" onclick="event.stopPropagation();removeItem('${panel.id}',${item.id})">✕</button>
+                    </span>
+                </div>
+                ${isOpen && hasAnswer ? /*html*/`
+                    <div class="question-answer">${escHtml(item.extra)}</div>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+function renderQuestionsPanelInput(panel) {
+    return /*html*/`
+        <input class="add-input" placeholder="${t(panel.phKey)}"
+            onkeydown="if(event.key==='Enter') addItem('${panel.id}',this)">
+    `;
+}
+
 // ── reminders ─────────────────────────────────────────────────────────────────
 // Huskeliste: { id, value, extra }  value = reminder text, extra = due date or ''
 function renderRemindersPanel(panel) {
@@ -484,6 +524,11 @@ function renderPanelContent(panel) {
             return [
                 renderRemindersPanel(panel),
                 renderRemindersPanelInput(panel),
+            ];
+        case 'questions':
+            return [
+                `<ul>${renderQuestionsPanel(panel)}</ul>`,
+                renderQuestionsPanelInput(panel),
             ];
         default:
             return [`<p class="empty-msg">Unknown panel type: ${panel.type}</p>`, ''];

@@ -193,6 +193,10 @@ const LANGS = {
         empty_tasks:      'Ingen oppgaver ennå…',
         empty_subtasks:   'Ingen deloppgaver ennå',
 
+        // AI
+        ai_define:        'Forklar med AI',
+        ai_answer:        'Svar med AI',
+
         // Panel descriptions (used in onboarding step 2)
         desc_questions:   'Ting du vil finne ut',
         desc_interests:   'Det som opptar deg',
@@ -400,6 +404,10 @@ const LANGS = {
         empty_keywords:   'No keywords yet…',
         empty_tasks:      'No tasks yet…',
         empty_subtasks:   'No subtasks yet',
+
+        // AI
+        ai_define:        'Define with AI',
+        ai_answer:        'Answer with AI',
 
         // Panel descriptions (onboarding step 2)
         desc_questions:   'Things you want to find out',

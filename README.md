@@ -8,9 +8,10 @@ MyBoard is a personal canvas you grow over time. Capture interests, questions, g
 
 1. Push this repo to GitHub
 2. In Coolify: **New Resource → Git Repository → Dockerfile**
-3. Set environment variable:
+3. Set environment variables:
    ```
    JWT_SECRET=some-long-random-string-here
+   ANTHROPIC_API_KEY=sk-ant-...   # optional, enables the 🤖 AI buttons
    ```
 4. Add a **persistent volume** — this is critical, keeps your database across deploys:
    - Destination: `/app/data`
@@ -20,8 +21,9 @@ MyBoard is a personal canvas you grow over time. Capture interests, questions, g
 
 ```bash
 npm install
-JWT_SECRET=devsecret node server/index.js
+JWT_SECRET=devsecret ANTHROPIC_API_KEY=sk-ant-... node server/index.js
 # Open http://localhost:3000
+# ANTHROPIC_API_KEY is optional — without it the 🤖 buttons return 503
 ```
 
 Or with Docker:
