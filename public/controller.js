@@ -403,6 +403,23 @@ const lightToggle = themeToggle;
     }
 })();
 
+// Scales only the content inside .panel-scroll via CSS `zoom` — leaves the
+// panel header, topbar and surrounding chrome at their original sizes.
+function setTextScale(val) {
+    const n = Math.min(1.6, Math.max(0.8, parseFloat(val) || 1));
+    model.textScale = n;
+    document.documentElement.style.setProperty('--panel-content-scale', String(n));
+    localStorage.setItem('mb_text_scale', String(n));
+}
+
+(function applyStoredTextScale() {
+    const stored = parseFloat(localStorage.getItem('mb_text_scale'));
+    if (stored && stored >= 0.8 && stored <= 1.6) {
+        model.textScale = stored;
+        document.documentElement.style.setProperty('--panel-content-scale', String(stored));
+    }
+})();
+
 // ── BILLS ─────────────────────────────────────────────────────────────────────
 
 function addBill(listId) {

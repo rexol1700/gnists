@@ -30,6 +30,7 @@ const model = {
     aiLoading: new Set(), // item IDs currently waiting on an AI response
     mealActiveTab: {},
     isDarkmode: false,
+    textScale: 1,
     addPanelOpen: false,
     boardManage: false,
     tileLayout: [],
