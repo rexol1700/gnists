@@ -381,3 +381,69 @@ function escHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;');
 }
+
+// Minimal, safe markdown renderer for AI-generated answers/definitions.
+// Escapes HTML first, then converts a small markdown subset. Code spans/blocks
+// are extracted before escape so their content stays literal.
+function mdToHtml(str) {
+    if (str === null || str === undefined) return '';
+    let s = String(str).replace(/\r\n/g, '\n');
+
+    const codeBlocks = [];
+    s = s.replace(/```([\s\S]*?)```/g, (_, code) => {
+        codeBlocks.push(code.replace(/^[\w-]*\n/, '').replace(/\n$/, ''));
+        return `\n\nMDXCB${codeBlocks.length - 1}XCB\n\n`;
+    });
+    const inlineCode = [];
+    s = s.replace(/`([^`\n]+)`/g, (_, code) => {
+        inlineCode.push(code);
+        return `MDXIC${inlineCode.length - 1}XIC`;
+    });
+
+    s = s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    s = s.replace(/^### +(.+)$/gm, '<h4>$1</h4>')
+         .replace(/^## +(.+)$/gm, '<h3>$1</h3>')
+         .replace(/^# +(.+)$/gm, '<h2>$1</h2>');
+
+    s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+         .replace(/__([^_\n]+)__/g, '<strong>$1</strong>')
+         .replace(/(^|[\s(>])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+         .replace(/(^|[\s(>])_([^_\n]+)_(?=[\s.,;:!?)\]]|$)/g, '$1<em>$2</em>');
+
+    s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+        '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+    s = s.replace(/(?:^[-*+] +.+(?:\n|$))+/gm, (block) => {
+        const items = block.trim().split('\n')
+            .map(line => `<li>${line.replace(/^[-*+] +/, '')}</li>`).join('');
+        return `<ul>${items}</ul>\n`;
+    });
+    s = s.replace(/(?:^\d+\. +.+(?:\n|$))+/gm, (block) => {
+        const items = block.trim().split('\n')
+            .map(line => `<li>${line.replace(/^\d+\. +/, '')}</li>`).join('');
+        return `<ol>${items}</ol>\n`;
+    });
+
+    s = s.replace(/([^\n])\n?(<(?:h[1-6]|ul|ol|pre|blockquote)\b)/g, '$1\n\n$2')
+         .replace(/(<\/(?:h[1-6]|ul|ol|pre|blockquote)>)\n?([^\n])/g, '$1\n\n$2');
+
+    s = s.split(/\n{2,}/).map(b => {
+        b = b.trim();
+        if (!b) return '';
+        if (/^MDXCB\d+XCB$/.test(b)) return b;
+        if (/^<(h[1-6]|ul|ol|pre|blockquote)/.test(b)) return b;
+        return `<p>${b.replace(/\n/g, '<br>')}</p>`;
+    }).join('\n');
+
+    s = s.replace(/MDXIC(\d+)XIC/g, (_, i) => {
+        const c = inlineCode[+i].replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return `<code>${c}</code>`;
+    });
+    s = s.replace(/MDXCB(\d+)XCB/g, (_, i) => {
+        const c = codeBlocks[+i].replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return `<pre><code>${c}</code></pre>`;
+    });
+
+    return s;
+}

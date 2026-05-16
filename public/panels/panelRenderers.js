@@ -442,7 +442,7 @@ function renderQuestionsPanel(panel) {
                     </span>
                 </div>
                 ${isOpen && hasAnswer ? /*html*/`
-                    <div class="question-answer">${escHtml(item.extra)}</div>
+                    <div class="question-answer">${mdToHtml(item.extra)}</div>
                 ` : ''}
             </div>
         `;
