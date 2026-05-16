@@ -199,7 +199,8 @@ async function addItem(listName, inputEl) {
     try {
         const res = await API.addItem(listName, value);
         model.lists[listName].push({ id: res.id, value, extra: '' });
-        updateView();
+        rerenderPanel(listName);
+        rerenderSubbarCount();
     } catch (err) {
         toast(err.message, 'error');
     }
@@ -209,7 +210,8 @@ async function removeItem(listName, id) {
     try {
         await API.deleteItem(id);
         model.lists[listName] = model.lists[listName].filter(i => i.id !== id);
-        updateView();
+        rerenderPanel(listName);
+        rerenderSubbarCount();
     } catch (err) {
         toast(err.message, 'error');
     }
@@ -249,7 +251,8 @@ async function resetList(listName) {
         } else {
             model.lists[listName] = [];
         }
-        updateView();
+        rerenderPanel(listName);
+        rerenderSubbarCount();
     } catch (err) {
         toast(err.message, 'error');
     }
@@ -264,7 +267,8 @@ async function addKeyword(inputEl) {
     try {
         const res = await API.addItem('Nøkkelord', value, '');
         model.lists.Nøkkelord.push({ id: res.id, value, extra: '' });
-        updateView();
+        rerenderPanel('Nøkkelord');
+        rerenderSubbarCount();
     } catch (err) {
         toast(err.message, 'error');
     }
@@ -276,7 +280,7 @@ function editKeyword(index) {
     } else {
         model.editingIndex.add(index);
     }
-    updateView();
+    rerenderPanel('Nøkkelord');
     requestAnimationFrame(() => {
         document.querySelectorAll('.keyword-meaning').forEach(el => {
             el.style.height = 'auto';
@@ -306,7 +310,8 @@ async function addTask(inputEl) {
     try {
         const res = await API.addTask(value);
         model.tasks.push({ id: res.id, task: value, ischecked: false, subtasks: [] });
-        updateView();
+        rerenderPanel('tasks');
+        rerenderSubbarCount();
     } catch (err) {
         toast(err.message, 'error');
     }
@@ -314,19 +319,19 @@ async function addTask(inputEl) {
 
 function toggleTaskPanel(id) {
     model.expandedTask = model.expandedTask === id ? null : id;
-    updateView();
+    rerenderPanel('tasks');
 }
 
 async function toggleTask(id) {
     const task = model.tasks.find(t => t.id === id);
     if (!task) return;
     task.ischecked = !task.ischecked;
-    updateView();
+    rerenderPanel('tasks');
     try {
         await API.updateItem(id, { ischecked: task.ischecked });
     } catch (err) {
         task.ischecked = !task.ischecked;
-        updateView();
+        rerenderPanel('tasks');
     }
 }
 
@@ -335,7 +340,8 @@ async function removeTask(id) {
         await API.deleteItem(id);
         model.tasks = model.tasks.filter(t => t.id !== id);
         if (model.expandedTask === id) model.expandedTask = null;
-        updateView();
+        rerenderPanel('tasks');
+        rerenderSubbarCount();
     } catch (err) {
         toast(err.message, 'error');
     }
@@ -349,7 +355,7 @@ async function addSubtask(taskId, inputEl) {
         const res = await API.addSubtask(taskId, value);
         const task = model.tasks.find(t => t.id === taskId);
         if (task) task.subtasks.push({ id: res.id, task: value, ischecked: false });
-        updateView();
+        rerenderPanel('tasks');
     } catch (err) {
         toast(err.message, 'error');
     }
@@ -360,12 +366,12 @@ async function toggleSubtask(taskId, subtaskId) {
     const sub = task?.subtasks.find(s => s.id === subtaskId);
     if (!sub) return;
     sub.ischecked = !sub.ischecked;
-    updateView();
+    rerenderPanel('tasks');
     try {
         await API.toggleSubtask(subtaskId, sub.ischecked);
     } catch (err) {
         sub.ischecked = !sub.ischecked;
-        updateView();
+        rerenderPanel('tasks');
     }
 }
 
@@ -374,7 +380,7 @@ async function removeSubtask(taskId, subtaskId) {
         await API.deleteSubtask(subtaskId);
         const task = model.tasks.find(t => t.id === taskId);
         if (task) task.subtasks = task.subtasks.filter(s => s.id !== subtaskId);
-        updateView();
+        rerenderPanel('tasks');
     } catch (err) {
         toast(err.message, 'error');
     }
@@ -435,7 +441,8 @@ function addBill(listId) {
     API.addItem(listId, name, extra)
         .then(res => {
             model.lists[listId].push({ id: res.id, value: name, extra });
-            updateView();
+            rerenderPanel(listId);
+            rerenderSubbarCount();
         })
         .catch(err => toast(err.message, 'error'));
 }
@@ -444,7 +451,8 @@ function removeBill(id) {
     API.deleteItem(id)
         .then(() => {
             model.lists.bills = model.lists.bills.filter(b => b.id !== id);
-            updateView();
+            rerenderPanel('bills');
+            rerenderSubbarCount();
         })
         .catch(err => toast(err.message, 'error'));
 }
@@ -462,7 +470,8 @@ function addReminder(listId) {
     API.addItem(listId, text, extra)
         .then(res => {
             model.lists[listId].push({ id: res.id, value: text, extra });
-            updateView();
+            rerenderPanel(listId);
+            rerenderSubbarCount();
         })
         .catch(err => toast(err.message, 'error'));
 }
@@ -492,7 +501,8 @@ function addTimeEntry(listId) {
     API.addItem(listId, label, extra)
         .then(res => {
             model.lists[listId].push({ id: res.id, value: label, extra });
-            updateView();
+            rerenderPanel(listId);
+            rerenderSubbarCount();
         })
         .catch(err => toast(err.message, 'error'));
 }
@@ -510,7 +520,8 @@ function addSellingItem(listId) {
     API.addItem(listId, name, extra)
         .then(res => {
             model.lists[listId].push({ id: res.id, value: name, extra });
-            updateView();
+            rerenderPanel(listId);
+            rerenderSubbarCount();
         })
         .catch(err => toast(err.message, 'error'));
 }
@@ -521,7 +532,7 @@ function updateSellingStatus(id, listId, newStatus) {
     const [price = ''] = (item.extra || '').split('|');
     item.extra = `${price}|${newStatus}`;
     API.updateItem(id, { extra: item.extra })
-        .then(() => updateView())
+        .then(() => rerenderPanel(listId))
         .catch(err => toast(err.message, 'error'));
 }
 
@@ -534,7 +545,7 @@ function toggleShoppingItem(id, listId, checked) {
     const listName = parts[0] || model.activeShoppingList;
     item.extra = `${listName}|${checked ? 'done' : ''}`;
     API.updateItem(id, { extra: item.extra })
-        .then(() => updateView())
+        .then(() => rerenderPanel(listId))
         .catch(err => toast(err.message, 'error'));
 }
 
@@ -561,7 +572,7 @@ function initShoppingLists() {
 function setActiveShoppingList(name) {
     model.activeShoppingList = name;
     localStorage.setItem('mb_active_list', name);
-    updateView();
+    rerenderPanel('shopping');
 }
 
 function addShoppingList(name) {
@@ -579,7 +590,7 @@ function removeShoppingList(name) {
         model.activeShoppingList = model.shoppingLists[0];
         localStorage.setItem('mb_active_list', model.activeShoppingList);
     }
-    updateView();
+    rerenderPanel('shopping');
 }
 
 function addShoppingItemToList(listId, inputEl) {
@@ -591,7 +602,8 @@ function addShoppingItemToList(listId, inputEl) {
     API.addItem(listId, value, extra)
         .then(res => {
             model.lists[listId].push({ id: res.id, value, extra });
-            updateView();
+            rerenderPanel(listId);
+            rerenderSubbarCount();
         })
         .catch(err => toast(err.message, 'error'));
 }
@@ -601,12 +613,12 @@ function addShoppingItemToList(listId, inputEl) {
 function toggleMeal(id) {
     model.expandedMeal = model.expandedMeal === id ? null : id;
     if (!model.mealActiveTab[id]) model.mealActiveTab[id] = 'ingredients';
-    updateView();
+    rerenderPanel('meals');
 }
 
 function setMealTab(id, tab) {
     model.mealActiveTab[id] = tab;
-    updateView();
+    rerenderPanel('meals');
 }
 
 function getMealData(item) {
@@ -623,7 +635,8 @@ async function addMeal(inputEl) {
         model.lists.meals.push({ id: res.id, value, extra });
         model.expandedMeal = res.id;
         model.mealActiveTab[res.id] = 'ingredients';
-        updateView();
+        rerenderPanel('meals');
+        rerenderSubbarCount();
     } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -632,7 +645,8 @@ async function removeMeal(id) {
         await API.deleteItem(id);
         model.lists.meals = model.lists.meals.filter(m => m.id !== id);
         if (model.expandedMeal === id) model.expandedMeal = null;
-        updateView();
+        rerenderPanel('meals');
+        rerenderSubbarCount();
     } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -648,7 +662,7 @@ async function addMealIngredient(mealId, inputEl) {
     meal.extra = JSON.stringify(data);
     try {
         await API.updateItem(mealId, { extra: meal.extra });
-        updateView();
+        rerenderPanel('meals');
     } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -660,7 +674,7 @@ async function removeMealIngredient(mealId, ingId) {
     meal.extra = JSON.stringify(data);
     try {
         await API.updateItem(mealId, { extra: meal.extra });
-        updateView();
+        rerenderPanel('meals');
     } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -687,7 +701,8 @@ async function addIngredientToShoppingList(mealId, ingId) {
         const res = await API.addItem('shopping', ing.name, extra);
         model.lists.shopping.push({ id: res.id, value: ing.name, extra });
         toast((lang === 'no' ? 'Lagt til i ' : 'Added to ') + listName + ' ✓');
-        updateView();
+        rerenderPanel('shopping');
+        rerenderSubbarCount();
     } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -705,7 +720,8 @@ async function addAllIngredientsToShoppingList(mealId) {
             model.lists.shopping.push({ id: res.id, value: ing.name, extra });
         }
         toast((lang === 'no' ? 'Alle ingredienser lagt til i ' : 'All ingredients added to ') + listName + ' ✓');
-        updateView();
+        rerenderPanel('shopping');
+        rerenderSubbarCount();
     } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -716,7 +732,7 @@ initShoppingLists();
 
 function toggleNote(id) {
     model.expandedNote = model.expandedNote === id ? null : id;
-    updateView();
+    rerenderPanel('notes');
 }
 
 function saveNoteBody(id, listId, value) {
@@ -731,7 +747,7 @@ function saveNoteBody(id, listId, value) {
 
 function toggleQuestion(id) {
     model.expandedQuestion = model.expandedQuestion === id ? null : id;
-    updateView();
+    rerenderPanel('questions');
 }
 
 // ── AI ────────────────────────────────────────────────────────────────────────
@@ -740,7 +756,7 @@ async function aiDefineKeyword(id, listIndex) {
     const item = model.lists.Nøkkelord?.[listIndex];
     if (!item || model.aiLoading.has(id)) return;
     model.aiLoading.add(id);
-    updateView();
+    rerenderPanel('Nøkkelord');
     try {
         const res = await API.aiComplete('define', item.value, lang);
         const def = (res.text || '').trim();
@@ -752,7 +768,7 @@ async function aiDefineKeyword(id, listIndex) {
         toast(err.message, 'error');
     } finally {
         model.aiLoading.delete(id);
-        updateView();
+        rerenderPanel('Nøkkelord');
     }
 }
 
@@ -760,7 +776,7 @@ async function aiAnswerQuestion(id) {
     const item = model.lists.questions?.find(q => q.id === id);
     if (!item || model.aiLoading.has(id)) return;
     model.aiLoading.add(id);
-    updateView();
+    rerenderPanel('questions');
     try {
         const res = await API.aiComplete('answer', item.value, lang);
         const ans = (res.text || '').trim();
@@ -772,6 +788,6 @@ async function aiAnswerQuestion(id) {
         toast(err.message, 'error');
     } finally {
         model.aiLoading.delete(id);
-        updateView();
+        rerenderPanel('questions');
     }
 }
