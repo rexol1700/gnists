@@ -4,10 +4,14 @@ const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
 const initSqlJs = require('sql.js');
+const Anthropic = require('@anthropic-ai/sdk');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'myboard-secret-change-in-production';
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
+
+const anthropic = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null;
 
 // New canonical DB path. If a legacy gnists.db exists in the same dir, use that
 // (so existing deployments migrate seamlessly without losing data).
@@ -262,6 +266,58 @@ app.patch('/api/subtasks/:id', auth, (req, res) => {
 app.delete('/api/subtasks/:id', auth, (req, res) => {
     run('DELETE FROM subtasks WHERE id = ?', [parseInt(req.params.id, 10)]);
     res.json({ ok: true });
+});
+
+// ── AI ROUTE ──────────────────────────────────────────────────────────────────
+// Simple in-memory throttle: max 20 AI calls per user per 5 minutes
+const aiRateBucket = new Map();
+function aiRateLimit(userId) {
+    const now = Date.now();
+    const windowMs = 5 * 60 * 1000;
+    const max = 20;
+    const entry = aiRateBucket.get(userId) || { count: 0, resetAt: now + windowMs };
+    if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + windowMs; }
+    entry.count += 1;
+    aiRateBucket.set(userId, entry);
+    return entry.count <= max;
+}
+
+app.post('/api/ai', auth, async (req, res) => {
+    if (!anthropic) return res.status(503).json({ error: 'AI is not configured on this server' });
+    if (!aiRateLimit(req.user.id)) return res.status(429).json({ error: 'Too many AI requests — try again later' });
+
+    const { kind, text, lang } = req.body;
+    if (typeof text !== 'string' || !text.trim()) return res.status(400).json({ error: 'Empty input' });
+    if (text.length > 500) return res.status(400).json({ error: 'Input too long' });
+    if (kind !== 'define' && kind !== 'answer') return res.status(400).json({ error: 'Invalid kind' });
+
+    const isNo = lang === 'no';
+    const system = kind === 'define'
+        ? (isNo
+            ? 'Du forklarer ord og uttrykk kort og presist. Svar med 1–2 setninger, maks 40 ord. Ingen innledning, ingen "Definisjon:"-prefiks. Skriv på norsk.'
+            : 'You explain words and phrases concisely. Answer in 1–2 sentences, max 40 words. No preamble, no "Definition:" prefix. Write in English.')
+        : (isNo
+            ? 'Du svarer på spørsmål direkte og kort, maks 4 setninger eller en kort punktliste. Ingen innledning som "Godt spørsmål". Hvis du er usikker, si det. Skriv på norsk.'
+            : 'You answer questions directly and briefly, max 4 sentences or a short bullet list. No preamble like "Great question". If unsure, say so. Write in English.');
+
+    try {
+        const response = await anthropic.messages.create({
+            model: 'claude-haiku-4-5',
+            max_tokens: 400,
+            system,
+            messages: [{ role: 'user', content: text.trim() }],
+        });
+        const out = (response.content || [])
+            .filter(b => b.type === 'text')
+            .map(b => b.text)
+            .join('')
+            .trim();
+        res.json({ text: out });
+    } catch (err) {
+        const status = err && err.status ? err.status : 500;
+        const msg = err && err.message ? err.message : 'AI request failed';
+        res.status(status === 401 || status === 403 ? 503 : 500).json({ error: msg });
+    }
 });
 
 // Fallback to index.html for SPA

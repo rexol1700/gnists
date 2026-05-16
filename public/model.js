@@ -26,6 +26,8 @@ const model = {
     expandedTask: null,
     expandedNote: null,
     expandedMeal: null,
+    expandedQuestion: null,
+    aiLoading: new Set(), // item IDs currently waiting on an AI response
     mealActiveTab: {},
     isDarkmode: false,
     addPanelOpen: false,

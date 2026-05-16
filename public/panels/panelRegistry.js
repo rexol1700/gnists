@@ -22,7 +22,7 @@ const PANEL_REGISTRY = [
         descKey: 'desc_questions',
         phKey: 'ph_questions',
         emptyKey: 'empty_list',
-        type: 'simple',
+        type: 'questions',
         span: 2,
         defaultOn: true,
     },

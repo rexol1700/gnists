@@ -709,3 +709,52 @@ function saveNoteBody(id, listId, value) {
     API.updateItem(id, { extra: value })
         .catch(err => toast(err.message, 'error'));
 }
+
+// ── QUESTIONS ─────────────────────────────────────────────────────────────────
+
+function toggleQuestion(id) {
+    model.expandedQuestion = model.expandedQuestion === id ? null : id;
+    updateView();
+}
+
+// ── AI ────────────────────────────────────────────────────────────────────────
+
+async function aiDefineKeyword(id, listIndex) {
+    const item = model.lists.Nøkkelord?.[listIndex];
+    if (!item || model.aiLoading.has(id)) return;
+    model.aiLoading.add(id);
+    updateView();
+    try {
+        const res = await API.aiComplete('define', item.value, lang);
+        const def = (res.text || '').trim();
+        if (!def) throw new Error('Empty response');
+        item.extra = def;
+        model.editingIndex.add(listIndex);
+        await API.updateItem(id, { extra: def });
+    } catch (err) {
+        toast(err.message, 'error');
+    } finally {
+        model.aiLoading.delete(id);
+        updateView();
+    }
+}
+
+async function aiAnswerQuestion(id) {
+    const item = model.lists.questions?.find(q => q.id === id);
+    if (!item || model.aiLoading.has(id)) return;
+    model.aiLoading.add(id);
+    updateView();
+    try {
+        const res = await API.aiComplete('answer', item.value, lang);
+        const ans = (res.text || '').trim();
+        if (!ans) throw new Error('Empty response');
+        item.extra = ans;
+        model.expandedQuestion = id;
+        await API.updateItem(id, { extra: ans });
+    } catch (err) {
+        toast(err.message, 'error');
+    } finally {
+        model.aiLoading.delete(id);
+        updateView();
+    }
+}

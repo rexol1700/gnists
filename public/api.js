@@ -84,6 +84,10 @@ const API = {
         return this._req('DELETE', `/api/subtasks/${id}`);
     },
 
+    async aiComplete(kind, text, lang) {
+        return this._req('POST', '/api/ai', { kind, text, lang });
+    },
+
     isLoggedIn() {
         return !!this.token;
     }
