@@ -8,13 +8,7 @@ function homeView() {
     const dropZone = renderBottomDropZone();
 
     // Item count for the subbar
-    const itemCount = Object.values(model.lists).reduce((s, arr) => s + arr.length, 0)
-        + model.tasks.length;
-    const countText = itemCount === 0
-        ? t('sub_count_empty')
-        : itemCount === 1
-            ? t('sub_count_one')
-            : t('sub_count_many', { n: itemCount });
+    const countText = _subbarCountText();
 
     // Headline: Weekday + time-of-day, e.g. "Tuesday afternoon."
     // The time-of-day word is the italic-sage emphasis.
@@ -55,7 +49,7 @@ function homeView() {
 
     <div class="subbar">
         <h1>${headline}</h1>
-        <span class="when">${escHtml(dateStr)} · ${countText}</span>
+        <span class="when">${escHtml(dateStr)} · <span id="subbar-count-text">${countText}</span></span>
         <div class="right">
             ${inactive.length > 0 ? `
                 <div class="add-board-wrap${addPanelOpen ? ' open' : ''}">
@@ -125,9 +119,7 @@ function _panelItemCount(panel) {
 function renderTileCell(cell, rIdx, cIdx, row) {
     const panel = PANEL_REGISTRY.find(p => p.id === cell.id);
     if (!panel) return '';
-    const [bodyHtml, inputHtml] = renderPanelContent(panel);
     const isLast = cIdx === row.length - 1;
-    const count = _panelItemCount(panel);
 
     return /*html*/`
         <div class="tile-panel"
@@ -156,37 +148,73 @@ function renderTileCell(cell, rIdx, cIdx, row) {
                  ondrop="tileEdgeDrop(event,'${panel.id}','bottom')"
                  ondragleave="tileEdgeLeave(event)"></div>
 
-            <div class="tile-panel-inner">
-                <div class="panel-header">
-                    <span class="panel-drag-grip"
-                          draggable="true"
-                          ondragstart="tileDragStart(event, '${panel.id}')"
-                          ondragend="tileDragEnd(event)"
-                          title="${lang === 'no' ? 'Dra for å flytte' : 'Drag to move'}">⠿</span>
-                    <span class="panel-icon">${panel.icon}</span>
-                    <span class="panel-title"
-                          ondblclick="layoutExpandInRow('${panel.id}')"
-                          title="${lang === 'no' ? 'Dobbeltklikk for å utvide' : 'Double-click to expand'}">${t(panel.labelKey)}</span>
-                    ${count ? `<span class="panel-count">${count}</span>` : ''}
-
-                    <div class="panel-controls">
-                        <button class="panel-ctrl-btn" onclick="layoutExpandInRow('${panel.id}')"
-                            title="${lang === 'no' ? 'Utvid/gjenopprett' : 'Expand/restore'}">⤢</button>
-                        <button class="btn-reset"
-                            onclick="spinReset('${panel.id}', this)" title="${t('btn_clear')}">↺</button>
-                        <button class="panel-ctrl-btn panel-ctrl-hide"
-                            onclick="layoutRemovePanel('${panel.id}')"
-                            title="${lang === 'no' ? 'Skjul panel' : 'Hide panel'}">✕</button>
-                    </div>
-                </div>
-
-                ${inputHtml}
-                <div class="panel-scroll">${bodyHtml}</div>
-            </div>
+            <div class="tile-panel-inner">${renderTilePanelInner(panel)}</div>
 
             ${!isLast ? `<div class="tile-resize-handle" data-panel-id="${panel.id}" onmousedown="tileResizeStart(event, '${panel.id}')"></div>` : ''}
         </div>
     `;
+}
+
+// Inner contents of a tile panel: header, input row, scrollable body.
+// Extracted so rerenderPanel() can swap one panel's contents without
+// rebuilding the entire board.
+function renderTilePanelInner(panel) {
+    const [bodyHtml, inputHtml] = renderPanelContent(panel);
+    const count = _panelItemCount(panel);
+
+    return /*html*/`
+        <div class="panel-header">
+            <span class="panel-drag-grip"
+                  draggable="true"
+                  ondragstart="tileDragStart(event, '${panel.id}')"
+                  ondragend="tileDragEnd(event)"
+                  title="${lang === 'no' ? 'Dra for å flytte' : 'Drag to move'}">⠿</span>
+            <span class="panel-icon">${panel.icon}</span>
+            <span class="panel-title"
+                  ondblclick="layoutExpandInRow('${panel.id}')"
+                  title="${lang === 'no' ? 'Dobbeltklikk for å utvide' : 'Double-click to expand'}">${t(panel.labelKey)}</span>
+            ${count ? `<span class="panel-count">${count}</span>` : ''}
+
+            <div class="panel-controls">
+                <button class="panel-ctrl-btn" onclick="layoutExpandInRow('${panel.id}')"
+                    title="${lang === 'no' ? 'Utvid/gjenopprett' : 'Expand/restore'}">⤢</button>
+                <button class="btn-reset"
+                    onclick="spinReset('${panel.id}', this)" title="${t('btn_clear')}">↺</button>
+                <button class="panel-ctrl-btn panel-ctrl-hide"
+                    onclick="layoutRemovePanel('${panel.id}')"
+                    title="${lang === 'no' ? 'Skjul panel' : 'Hide panel'}">✕</button>
+            </div>
+        </div>
+
+        ${inputHtml}
+        <div class="panel-scroll">${bodyHtml}</div>
+    `;
+}
+
+// Subbar item count text (computed identically to homeView).
+function _subbarCountText() {
+    const itemCount = Object.values(model.lists).reduce((s, arr) => s + arr.length, 0)
+        + model.tasks.length;
+    if (itemCount === 0) return t('sub_count_empty');
+    if (itemCount === 1) return t('sub_count_one');
+    return t('sub_count_many', { n: itemCount });
+}
+
+// Replace one panel's inner content without touching the rest of the board.
+// Falls back to a full updateView() if the panel isn't currently mounted
+// (e.g. the panel was just added/removed via the layout).
+function rerenderPanel(panelId) {
+    const el = document.querySelector(`.tile-panel[data-panel-id="${CSS.escape(panelId)}"] .tile-panel-inner`);
+    if (!el) { updateView(); return; }
+    const panel = PANEL_REGISTRY.find(p => p.id === panelId);
+    if (!panel) { updateView(); return; }
+    el.innerHTML = renderTilePanelInner(panel);
+}
+
+// Refresh just the item-count text in the subbar.
+function rerenderSubbarCount() {
+    const el = document.getElementById('subbar-count-text');
+    if (el) el.textContent = _subbarCountText();
 }
 
 // ── BOTTOM DROP ZONE ──────────────────────────────────────────────────────────
