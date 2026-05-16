@@ -39,11 +39,20 @@ function homeView() {
     const inactive = layoutGetInactive();
     const addPanelOpen = model.addPanelOpen && inactive.length > 0;
 
+    const textSizeTitle = lang === 'no' ? 'Tekststørrelse' : 'Text size';
+
     return /*html*/`
     <div class="topbar">
         <div class="topbar-brand">
             ${_mbMark(16)}
             <span>My<em>Board</em></span>
+        </div>
+        <div class="text-size-slider" title="${textSizeTitle}">
+            <span class="tsl-label tsl-small">A</span>
+            <input type="range" min="0.8" max="1.6" step="0.05" value="${model.textScale}"
+                   aria-label="${textSizeTitle}"
+                   oninput="setTextScale(this.value)">
+            <span class="tsl-label tsl-large">A</span>
         </div>
         ${langSwitcher()}
         <button class="pill"><span class="av">${escHtml(avatar)}</span>${escHtml(username)}</button>
