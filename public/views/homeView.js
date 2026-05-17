@@ -64,7 +64,7 @@ function homeView() {
                 <div class="add-board-wrap${addPanelOpen ? ' open' : ''}">
                     <button class="pill add-board-pill ${addPanelOpen ? 'on' : ''}"
                             onclick="event.stopPropagation(); toggleAddPanel();">
-                        ${addPanelOpen ? '×' : '+'}&nbsp;&nbsp;${t('btn_add_board').replace(/^\\+\\s*/, '')}
+                        ${t('btn_add_board')}
                     </button>
                     ${addPanelOpen ? renderAddBoardPicker(inactive) : ''}
                 </div>
