@@ -53,6 +53,9 @@ function homeView() {
         <button class="btn-light ${darkOn ? 'on' : ''}"
                 onclick="themeToggle()"
                 title="${darkOn ? t('btn_dark') : t('btn_light')}"></button>
+        ${(model.billing && model.billing.enabled && model.billing.status !== 'grandfathered') ? `
+            <button class="btn-logout" onclick="openBillingPortal()" title="${t('paywall_manage')}">${t('paywall_manage')}</button>
+        ` : ''}
         <button class="btn-logout" onclick="doLogout()">${t('btn_logout')}</button>
     </div>
 

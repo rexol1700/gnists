@@ -211,6 +211,22 @@ const LANGS = {
         desc_times:       'Tilbakevendende øyeblikk',
         desc_selling:     'Annonser & status',
         desc_motivations: 'Hva som driver deg',
+
+        // Paywall
+        paywall_eyebrow:        'Lås opp tavlen',
+        paywall_title:          'Få hele <em>tavlen</em>.',
+        paywall_sub:            'Prøv hele MyBoard i 30 dager for en symbolsk sum. Hvis du liker det, fortsetter abonnementet automatisk.',
+        paywall_first30:        'de første 30 dagene',
+        paywall_then:           'deretter',
+        paywall_per_month:      '/ måned',
+        paywall_cancel:         'Si opp når som helst — ingen binding.',
+        paywall_btn:            'Start',
+        paywall_switch_currency:'Bytt til {cur}',
+        paywall_quote:          '"Tavlen din, for prisen av en kaffe."',
+        paywall_manage:         'Administrer abonnement',
+        paywall_success_eyebrow:'Aktiverer',
+        paywall_success_title:  'Et øyeblikk…',
+        paywall_success_sub:    'Vi setter opp kontoen din. Det tar bare noen sekunder.',
     },
 
     en: {
@@ -423,6 +439,22 @@ const LANGS = {
         desc_times:       'Recurring moments',
         desc_selling:     'Listings & status',
         desc_motivations: 'What drives you',
+
+        // Paywall
+        paywall_eyebrow:        'Unlock the board',
+        paywall_title:          'Get the full <em>board</em>.',
+        paywall_sub:            'Try all of MyBoard for 30 days for a token price. If you like it, your subscription continues automatically.',
+        paywall_first30:        'for the first 30 days',
+        paywall_then:           'then',
+        paywall_per_month:      '/ month',
+        paywall_cancel:         'Cancel any time — no commitment.',
+        paywall_btn:            'Start',
+        paywall_switch_currency:'Switch to {cur}',
+        paywall_quote:          '"Your board, for the price of a coffee."',
+        paywall_manage:         'Manage subscription',
+        paywall_success_eyebrow:'Activating',
+        paywall_success_title:  'One moment…',
+        paywall_success_sub:    "We're setting up your account. This only takes a few seconds.",
     }
 };
 
