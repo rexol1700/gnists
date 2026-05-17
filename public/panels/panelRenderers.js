@@ -354,10 +354,10 @@ function renderMealsPanel(panel) {
                     onblur="saveMealInstructions(${meal.id}, this.value)"
                     oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
                 >${escHtml(instructions)}</textarea>
-                ${hasInstrText ? `<button class="btn-light meal-instr-done" onclick="toggleMealInstrEdit(${meal.id})">${t('meal_done')}</button>` : ''}
+                ${hasInstrText ? `<button class="meal-instr-btn meal-instr-done" onclick="toggleMealInstrEdit(${meal.id})">${t('meal_done')}</button>` : ''}
             ` : /*html*/`
                 <div class="meal-instr-rendered">${mdToHtml(instructions)}</div>
-                <button class="btn-light meal-instr-edit" onclick="toggleMealInstrEdit(${meal.id})">${t('meal_edit')}</button>
+                <button class="meal-instr-btn meal-instr-edit" onclick="toggleMealInstrEdit(${meal.id})">✎ ${t('meal_edit')}</button>
             `;
             const instrHtml = !ingTab ? /*html*/`
                 <div class="meal-instructions">
