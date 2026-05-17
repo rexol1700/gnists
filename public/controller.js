@@ -20,8 +20,11 @@ function changePage(page) {
 async function doLogin(username, password, errorEl) {
     try {
         await API.login(username, password);
+        // Check billing first — if the user owes money, /api/data will 402
+        // and we'd rather show the paywall than a generic error.
+        const allowed = await fetchBillingAndRoute();
+        if (!allowed) return;
         await loadData();
-        // Existing accounts always go straight to the home board
         changePage('home');
     } catch (err) {
         errorEl.textContent = err.message;
@@ -31,6 +34,9 @@ async function doLogin(username, password, errorEl) {
 async function doRegister(username, password, errorEl) {
     try {
         const res = await API.register(username, password);
+        // New signups are 'none' and must subscribe before they can use the app.
+        const allowed = await fetchBillingAndRoute();
+        if (!allowed) return;
         await loadData();
         // Brand-new accounts go through onboarding; everyone else lands on home.
         if (res && res.isNew) {
@@ -40,6 +46,77 @@ async function doRegister(username, password, errorEl) {
         }
     } catch (err) {
         errorEl.textContent = err.message;
+    }
+}
+
+// Fetch billing status from server. If the user has access (paid /
+// grandfathered / billing disabled), return true. Otherwise route to the
+// paywall and return false so the caller bails out.
+async function fetchBillingAndRoute() {
+    try {
+        const status = await API.billingStatus();
+        model.billing = status;
+        if (status.hasAccess) return true;
+        // No access — paywall it is.
+        model.paywallCurrency = model.paywallCurrency
+            || localStorage.getItem('mb_currency')
+            || ((navigator.language || '').toLowerCase().startsWith('n') ? 'NOK' : 'EUR');
+        changePage('paywall');
+        return false;
+    } catch (err) {
+        // If status itself fails, keep the user logged in but show a toast.
+        // Don't lock them out of an app they may have legitimate access to.
+        toast(err.message || 'Could not check subscription', 'error');
+        return true;
+    }
+}
+
+// Used by views.js boot. Same as fetchBillingAndRoute but if access is
+// granted, loads data and routes to home/onboarding.
+async function routeAfterAuth() {
+    const allowed = await fetchBillingAndRoute();
+    if (!allowed) return;
+    await loadData();
+    if (localStorage.getItem('mb_onboarding_pending') === '1') {
+        obStart();
+    } else {
+        model.page = 'home';
+        updateView();
+    }
+}
+
+// After Stripe Checkout success-redirect, poll the server until the webhook
+// has updated subscription_status. Give up after ~30s and refresh anyway.
+async function waitForActivation() {
+    const start = Date.now();
+    const timeoutMs = 30000;
+    while (Date.now() - start < timeoutMs) {
+        try {
+            const status = await API.billingStatus();
+            if (status.hasAccess) {
+                model.billing = status;
+                await loadData();
+                model.page = 'home';
+                updateView();
+                toast(lang === 'no' ? 'Abonnement aktivt' : 'Subscription active');
+                return;
+            }
+        } catch (e) { /* keep polling */ }
+        await new Promise(r => setTimeout(r, 1500));
+    }
+    // Webhook is slow or misconfigured — fall through to the app and let any
+    // gated request 402 if access truly isn't there yet.
+    try { await loadData(); model.page = 'home'; } catch (e) { model.page = 'paywall'; }
+    updateView();
+}
+
+// Open Stripe's hosted customer portal for cancel/update card/invoices.
+async function openBillingPortal() {
+    try {
+        const res = await API.billingPortal();
+        if (res.url) window.location.href = res.url;
+    } catch (err) {
+        toast(err.message, 'error');
     }
 }
 
@@ -70,9 +147,14 @@ async function loadData() {
         model.lists.meals         = data.lists.meals         || [];
         model.tasks               = data.tasks               || [];
     } catch (err) {
-        // Token expired or invalid
-        API.logout();
-        changePage('landing');
+        if (err.status === 402) {
+            // Subscription lapsed mid-session — route to paywall instead of logout
+            await fetchBillingAndRoute();
+        } else {
+            // Token expired or invalid
+            API.logout();
+            changePage('landing');
+        }
     }
 }
 

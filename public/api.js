@@ -19,7 +19,12 @@ const API = {
             body: body ? JSON.stringify(body) : undefined,
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Something went wrong');
+        if (!res.ok) {
+            const err = new Error(data.error || 'Something went wrong');
+            err.status = res.status;
+            err.code = data.code;
+            throw err;
+        }
         return data;
     },
 
@@ -86,6 +91,19 @@ const API = {
 
     async aiComplete(kind, text, lang) {
         return this._req('POST', '/api/ai', { kind, text, lang });
+    },
+
+    // ── BILLING ─────────────────────────────────────────────────────────────
+    async billingStatus() {
+        return this._req('GET', '/api/billing/status');
+    },
+
+    async billingCheckout(currency) {
+        return this._req('POST', '/api/billing/checkout', { currency });
+    },
+
+    async billingPortal() {
+        return this._req('POST', '/api/billing/portal');
     },
 
     isLoggedIn() {

@@ -2507,3 +2507,54 @@ ul {
     .question-text { font-size: 14px; }
     .question-answer { font-size: 13px; padding: 4px 12px 10px 12px; }
 }
+
+/* ── Paywall ──────────────────────────────────────────────────────────────── */
+.paywall-price {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 22px 24px;
+    margin: 22px 0 10px;
+    background: var(--surface2);
+}
+.paywall-price-row {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+.paywall-price-big {
+    font-family: 'Instrument Serif', serif;
+    font-size: 48px;
+    line-height: 1;
+    color: var(--ink);
+}
+.paywall-price-label {
+    color: var(--ink-2);
+    font-size: 15px;
+}
+.paywall-price-row--sub { margin-top: 12px; }
+.paywall-price-then {
+    color: var(--ink-2);
+    font-size: 14px;
+}
+.paywall-price-monthly {
+    font-family: 'Instrument Serif', serif;
+    font-size: 26px;
+    color: var(--ink);
+}
+.paywall-price-period {
+    color: var(--ink-2);
+    font-size: 14px;
+}
+.paywall-cancel {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--line);
+    color: var(--ink-2);
+    font-size: 13px;
+    font-style: italic;
+}
+@media (max-width: 720px) {
+    .paywall-price-big { font-size: 38px; }
+    .paywall-price-monthly { font-size: 22px; }
+}

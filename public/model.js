@@ -45,4 +45,10 @@ const model = {
     onboardingStep:    1,
     onboardingPicks:   new Set(),
     onboardingSpark:   { text: '', target: 'questions' },
+
+    // ── BILLING ───────────────────────────────────────────────────────────────
+    // Populated from /api/billing/status after login. paywallCurrency tracks
+    // the user's currency pick on the paywall view (NOK or EUR).
+    billing:           null,
+    paywallCurrency:   null,
 };
