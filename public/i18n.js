@@ -196,6 +196,10 @@ const LANGS = {
         // AI
         ai_define:        'Forklar med AI',
         ai_answer:        'Svar med AI',
+        ai_ingredients:   'Foreslå ingredienser med AI',
+        ai_instructions:  'Lag instruksjoner med AI',
+        meal_edit:        'Rediger',
+        meal_done:        'Ferdig',
 
         // Panel descriptions (used in onboarding step 2)
         desc_questions:   'Ting du vil finne ut',
@@ -424,6 +428,10 @@ const LANGS = {
         // AI
         ai_define:        'Define with AI',
         ai_answer:        'Answer with AI',
+        ai_ingredients:   'Suggest ingredients with AI',
+        ai_instructions:  'Generate instructions with AI',
+        meal_edit:        'Edit',
+        meal_done:        'Done',
 
         // Panel descriptions (onboarding step 2)
         desc_questions:   'Things you want to find out',
