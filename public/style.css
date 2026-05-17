@@ -2190,11 +2190,31 @@ ul {
     text-underline-offset: 2px;
 }
 
-.meal-instr-edit,
-.meal-instr-done {
+.meal-instr-btn {
     margin-top: 8px;
+    padding: 6px 14px;
+    font-family: var(--sans);
     font-size: 13px;
-    padding: 4px 12px;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.meal-instr-btn:hover {
+    background: var(--sage-bg);
+    color: var(--sage);
+    border-color: var(--sage);
+}
+.meal-instr-done {
+    color: var(--sage);
+    border-color: var(--sage);
+    background: var(--sage-bg);
+}
+.meal-instr-done:hover {
+    background: var(--sage);
+    color: var(--paper);
 }
 
 /* ── ICON BUTTONS / SMALL ACTIONS ────────────────────────────────────────── */
