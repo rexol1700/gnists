@@ -305,6 +305,8 @@ function renderMealsPanel(panel) {
         const ingredients = data.ingredients || [];
         const instructions = data.instructions || '';
         const tab = model.mealActiveTab[meal.id] || 'ingredients';
+        const aiBusy = model.aiLoading.has(meal.id);
+        const instrEditing = model.mealInstrEditing.has(meal.id);
 
         let bodyHtml = '';
         if (isOpen) {
@@ -327,8 +329,14 @@ function renderMealsPanel(panel) {
                         }
                     </div>
                     <div class="meal-ing-add">
-                        <input class="add-input meal-ing-input" placeholder="${t('ph_ingredient')}"
-                            onkeydown="if(event.key==='Enter') addMealIngredient(${meal.id},this)">
+                        <div class="meal-ing-input-row">
+                            <input class="add-input meal-ing-input" placeholder="${t('ph_ingredient')}"
+                                onkeydown="if(event.key==='Enter') addMealIngredient(${meal.id},this)">
+                            <button class="btn-icon btn-ai ${aiBusy ? 'ai-loading' : ''}"
+                                title="${t('ai_ingredients')}"
+                                onclick="aiSuggestMealIngredients(${meal.id})"
+                                ${aiBusy ? 'disabled' : ''}>${aiBusy ? '◌' : robotIcon()}</button>
+                        </div>
                         ${ingredients.length ? /*html*/`
                             <button class="btn btn-meal-all-shop" onclick="addAllIngredientsToShoppingList(${meal.id})">
                                 🛒 ${lang === 'no' ? 'Legg alle til handleliste' : 'Add all to shopping list'}
@@ -338,13 +346,28 @@ function renderMealsPanel(panel) {
                 </div>
             ` : '';
 
+            const hasInstrText = instructions && instructions.trim().length > 0;
+            const showEditor = instrEditing || !hasInstrText;
+            const editorPart = showEditor ? /*html*/`
+                <textarea class="meal-instr-area" rows="6"
+                    placeholder="${t('ph_instructions')}"
+                    onblur="saveMealInstructions(${meal.id}, this.value)"
+                    oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+                >${escHtml(instructions)}</textarea>
+                ${hasInstrText ? `<button class="btn-light meal-instr-done" onclick="toggleMealInstrEdit(${meal.id})">${t('meal_done')}</button>` : ''}
+            ` : /*html*/`
+                <div class="meal-instr-rendered">${mdToHtml(instructions)}</div>
+                <button class="btn-light meal-instr-edit" onclick="toggleMealInstrEdit(${meal.id})">${t('meal_edit')}</button>
+            `;
             const instrHtml = !ingTab ? /*html*/`
                 <div class="meal-instructions">
-                    <textarea class="meal-instr-area" rows="6"
-                        placeholder="${t('ph_instructions')}"
-                        onblur="saveMealInstructions(${meal.id}, this.value)"
-                        oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
-                    >${escHtml(instructions)}</textarea>
+                    <div class="meal-instr-toolbar">
+                        <button class="btn-icon btn-ai ${aiBusy ? 'ai-loading' : ''}"
+                            title="${t('ai_instructions')}"
+                            onclick="aiGenerateMealInstructions(${meal.id})"
+                            ${aiBusy ? 'disabled' : ''}>${aiBusy ? '◌' : robotIcon()}</button>
+                    </div>
+                    ${editorPart}
                 </div>
             ` : '';
 
