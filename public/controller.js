@@ -34,14 +34,19 @@ async function doLogin(username, password, errorEl) {
 async function doRegister(username, password, errorEl) {
     try {
         const res = await API.register(username, password);
-        // New signups are 'none' and must subscribe before they can use the app.
-        const allowed = await fetchBillingAndRoute();
-        if (!allowed) return;
-        await loadData();
-        // Brand-new accounts go through onboarding; everyone else lands on home.
+        // We deliberately do NOT billing-check here. New users go through
+        // onboarding first so they can see what they're paying for — the
+        // paywall comes at the end of obFinish() if they don't have access.
+        // Pre-fetch billing status anyway so the paywall view has price data
+        // ready by the time they arrive.
+        try { model.billing = await API.billingStatus(); } catch (e) { /* non-fatal */ }
         if (res && res.isNew) {
             obStart();
         } else {
+            // Existing account being re-created somehow — fall through to billing check
+            const allowed = await fetchBillingAndRoute();
+            if (!allowed) return;
+            await loadData();
             changePage('home');
         }
     } catch (err) {
@@ -96,6 +101,9 @@ async function waitForActivation() {
             if (status.hasAccess) {
                 model.billing = status;
                 await loadData();
+                // Restore any spark the user typed during onboarding — they
+                // paid, so honour the thing they captured before checkout.
+                await flushPendingSpark();
                 model.page = 'home';
                 updateView();
                 toast(lang === 'no' ? 'Abonnement aktivt' : 'Subscription active');
@@ -123,8 +131,10 @@ async function openBillingPortal() {
 function doLogout() {
     API.logout();
     localStorage.removeItem('mb_onboarding_pending');
+    localStorage.removeItem('mb_pending_spark');
     model.lists = { interests: [], questions: [], learningGoals: [], Nøkkelord: [], bills: [], times: [], motivations: [], selling: [], shopping: [], notes: [], reminders: [], meals: [] };
     model.tasks = [];
+    model.billing = null;
     changePage('landing');
 }
 
@@ -238,9 +248,8 @@ function obUseSuggestion(text) {
 }
 
 async function obFinish() {
-    // 1) Build the layout from the user's picks
+    // 1) Build the layout from the user's picks (purely client-side)
     const picks = Array.from(model.onboardingPicks);
-    // Always include questions as a backbone if they picked nothing meaningful
     const ordered = PANEL_REGISTRY
         .map(p => p.id)
         .filter(id => picks.includes(id));
@@ -249,10 +258,32 @@ async function obFinish() {
     model.tileLayout = layoutFromPicks(finalIds);
     layoutSave(model.tileLayout);
 
-    // 2) Save the spark, if any, into the chosen list
+    // Onboarding itself is "done" once the layout is saved — even if the user
+    // bails at the paywall, we don't want to re-run onboarding on next login.
+    localStorage.removeItem('mb_onboarding_pending');
+
     const spark = (model.onboardingSpark.text || '').trim();
     const target = model.onboardingSpark.target;
-    if (spark && finalIds.includes(target)) {
+    const sparkValid = spark && finalIds.includes(target);
+
+    // 2) Billing check — if the user doesn't have access yet, defer the spark
+    //    save and route them to the paywall. The pending spark gets written
+    //    to the server after they pay (handled in waitForActivation).
+    const billing = await API.billingStatus().catch(() => null);
+    model.billing = billing;
+    if (billing && billing.enabled && !billing.hasAccess) {
+        if (sparkValid) {
+            localStorage.setItem('mb_pending_spark', JSON.stringify({ spark, target }));
+        }
+        model.paywallCurrency = model.paywallCurrency
+            || localStorage.getItem('mb_currency')
+            || ((navigator.language || '').toLowerCase().startsWith('n') ? 'NOK' : 'EUR');
+        changePage('paywall');
+        return;
+    }
+
+    // 3) Has access — save the spark and drop into the board
+    if (sparkValid) {
         try {
             if (target === 'tasks') {
                 const r = await API.addTask(spark);
@@ -266,10 +297,27 @@ async function obFinish() {
             toast(err.message, 'error');
         }
     }
-
-    // 3) Done. Show the board.
-    localStorage.removeItem('mb_onboarding_pending');
     changePage('home');
+}
+
+// Save a spark that was captured during onboarding but couldn't be written
+// until the user paid. Called from waitForActivation after access is granted.
+async function flushPendingSpark() {
+    const raw = localStorage.getItem('mb_pending_spark');
+    if (!raw) return;
+    localStorage.removeItem('mb_pending_spark');
+    try {
+        const { spark, target } = JSON.parse(raw);
+        if (!spark || !target) return;
+        if (target === 'tasks') {
+            const r = await API.addTask(spark);
+            model.tasks.push({ id: r.id, task: spark, ischecked: false, subtasks: [] });
+        } else {
+            const r = await API.addItem(target, spark);
+            if (!model.lists[target]) model.lists[target] = [];
+            model.lists[target].push({ id: r.id, value: spark, extra: '' });
+        }
+    } catch (e) { /* swallow — not worth disrupting the welcome */ }
 }
 
 // ── SIMPLE LISTS ──────────────────────────────────────────────────────────────
