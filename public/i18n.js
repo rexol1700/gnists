@@ -197,6 +197,10 @@ const LANGS = {
         ai_define:        'Forklar med AI',
         ai_answer:        'Svar med AI',
         ai_budget_exceeded: 'AI-grensen for denne måneden er brukt opp. Tilbake snart.',
+        ai_ingredients:   'Foreslå ingredienser med AI',
+        ai_instructions:  'Lag instruksjoner med AI',
+        meal_edit:        'Rediger',
+        meal_done:        'Ferdig',
 
         // Panel descriptions (used in onboarding step 2)
         desc_questions:   'Ting du vil finne ut',
@@ -427,6 +431,10 @@ const LANGS = {
         ai_define:        'Define with AI',
         ai_answer:        'Answer with AI',
         ai_budget_exceeded: 'AI limit for this month is used up. Back soon.',
+        ai_ingredients:   'Suggest ingredients with AI',
+        ai_instructions:  'Generate instructions with AI',
+        meal_edit:        'Edit',
+        meal_done:        'Done',
 
         // Panel descriptions (onboarding step 2)
         desc_questions:   'Things you want to find out',

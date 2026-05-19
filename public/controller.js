@@ -931,3 +931,70 @@ async function aiAnswerQuestion(id) {
         rerenderPanel('questions');
     }
 }
+
+// Suggest ingredients for a meal via AI. Appends non-duplicate names to the
+// existing ingredients list and persists.
+async function aiSuggestMealIngredients(mealId) {
+    const meal = model.lists.meals?.find(m => m.id === mealId);
+    if (!meal || model.aiLoading.has(mealId)) return;
+    model.aiLoading.add(mealId);
+    updateView();
+    try {
+        const res = await API.aiComplete('ingredients', meal.value, lang);
+        const out = (res.text || '').trim();
+        if (!out) throw new Error('Empty response');
+        const data = getMealData(meal);
+        data.ingredients = data.ingredients || [];
+        const existing = new Set(data.ingredients.map(i => i.name.trim().toLowerCase()));
+        const lines = out.split('\n')
+            .map(l => l.replace(/^\s*[-*•\d.]+\s*/, '').trim())
+            .filter(l => l && !existing.has(l.toLowerCase()));
+        let nextId = Date.now();
+        for (const name of lines) {
+            data.ingredients.push({ id: nextId++, name });
+        }
+        meal.extra = JSON.stringify(data);
+        await API.updateItem(mealId, { extra: meal.extra });
+    } catch (err) {
+        toast(err.message, 'error');
+    } finally {
+        model.aiLoading.delete(mealId);
+        updateView();
+    }
+}
+
+// Generate cooking instructions via AI. Passes the meal name + current
+// ingredients so the model can explain WHY each is added. Saves as markdown
+// and exits edit mode so the rendered view shows.
+async function aiGenerateMealInstructions(mealId) {
+    const meal = model.lists.meals?.find(m => m.id === mealId);
+    if (!meal || model.aiLoading.has(mealId)) return;
+    const data = getMealData(meal);
+    const ings = (data.ingredients || []).map(i => i.name).filter(Boolean);
+    const header = lang === 'no' ? 'Ingredienser' : 'Ingredients';
+    const prompt = ings.length
+        ? `${meal.value}\n\n${header}:\n${ings.map(n => '- ' + n).join('\n')}`
+        : meal.value;
+    model.aiLoading.add(mealId);
+    updateView();
+    try {
+        const res = await API.aiComplete('instructions', prompt, lang);
+        const out = (res.text || '').trim();
+        if (!out) throw new Error('Empty response');
+        data.instructions = out;
+        meal.extra = JSON.stringify(data);
+        model.mealInstrEditing.delete(mealId);
+        await API.updateItem(mealId, { extra: meal.extra });
+    } catch (err) {
+        toast(err.message, 'error');
+    } finally {
+        model.aiLoading.delete(mealId);
+        updateView();
+    }
+}
+
+function toggleMealInstrEdit(mealId) {
+    if (model.mealInstrEditing.has(mealId)) model.mealInstrEditing.delete(mealId);
+    else model.mealInstrEditing.add(mealId);
+    updateView();
+}

@@ -618,22 +618,34 @@ app.post('/api/ai', auth, requireActiveSubscription, async (req, res) => {
 
     const { kind, text, lang } = req.body;
     if (typeof text !== 'string' || !text.trim()) return res.status(400).json({ error: 'Empty input' });
-    if (text.length > 500) return res.status(400).json({ error: 'Input too long' });
-    if (kind !== 'define' && kind !== 'answer') return res.status(400).json({ error: 'Invalid kind' });
+    if (text.length > 1500) return res.status(400).json({ error: 'Input too long' });
+    const validKinds = ['define', 'answer', 'ingredients', 'instructions'];
+    if (!validKinds.includes(kind)) return res.status(400).json({ error: 'Invalid kind' });
 
     const isNo = lang === 'no';
-    const system = kind === 'define'
-        ? (isNo
+    let system;
+    if (kind === 'define') {
+        system = isNo
             ? 'Du forklarer ord og uttrykk kort og presist. Svar med 1–2 setninger, maks 40 ord. Ingen innledning, ingen "Definisjon:"-prefiks. Skriv på norsk.'
-            : 'You explain words and phrases concisely. Answer in 1–2 sentences, max 40 words. No preamble, no "Definition:" prefix. Write in English.')
-        : (isNo
+            : 'You explain words and phrases concisely. Answer in 1–2 sentences, max 40 words. No preamble, no "Definition:" prefix. Write in English.';
+    } else if (kind === 'answer') {
+        system = isNo
             ? 'Du svarer på spørsmål direkte og kort, maks 4 setninger eller en kort punktliste. Ingen innledning som "Godt spørsmål". Hvis du er usikker, si det. Skriv på norsk.'
-            : 'You answer questions directly and briefly, max 4 sentences or a short bullet list. No preamble like "Great question". If unsure, say so. Write in English.');
+            : 'You answer questions directly and briefly, max 4 sentences or a short bullet list. No preamble like "Great question". If unsure, say so. Write in English.';
+    } else if (kind === 'ingredients') {
+        system = isNo
+            ? 'Du foreslår ingredienser for en oppskrift. Returner KUN ingrediensnavn, ett per linje. Ingen nummerering, punktlister, overskrifter eller forklaringer. Inkluder mengder der det er naturlig (f.eks. "500 g kjøttdeig", "2 hvitløksfedd"). Antar 4 porsjoner. Maks 12 ingredienser. Skriv på norsk.'
+            : 'You suggest ingredients for a recipe. Return ONLY ingredient names, one per line. No numbering, bullets, headings, or explanations. Include quantities where natural (e.g. "500 g ground beef", "2 cloves garlic"). Assume 4 servings. Max 12 ingredients. Write in English.';
+    } else { // instructions
+        system = isNo
+            ? 'Du skriver tydelige oppskriftsinstruksjoner i markdown. Bruk nummererte steg (1., 2., …). For hver ingrediens som tilsettes, forklar KORT hvorfor – smak, tekstur, kjemi eller teknikk – i kursiv eller parentes. Hold tonen varm og praktisk, ikke akademisk. Maks 8 steg. Start direkte med steg 1, ingen innledning. Skriv på norsk.'
+            : 'You write clear cooking instructions in markdown. Use numbered steps (1., 2., …). For each ingredient added, briefly explain WHY — flavor, texture, chemistry, or technique — in italics or parentheses. Keep the tone warm and practical, not academic. Max 8 steps. Start directly with step 1, no preamble. Write in English.';
+    }
 
     try {
         const response = await anthropic.messages.create({
             model: 'claude-haiku-4-5',
-            max_tokens: 400,
+            max_tokens: kind === 'instructions' ? 1200 : 400,
             system,
             messages: [{ role: 'user', content: text.trim() }],
         });

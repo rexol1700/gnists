@@ -29,6 +29,7 @@ const model = {
     expandedQuestion: null,
     aiLoading: new Set(), // item IDs currently waiting on an AI response
     mealActiveTab: {},
+    mealInstrEditing: new Set(), // meal IDs whose instructions tab is in edit mode
     isDarkmode: false,
     textScale: 1,
     addPanelOpen: false,
