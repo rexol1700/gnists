@@ -28,6 +28,7 @@ function homeView() {
 
     const username = API.username || '';
     const avatar = username ? username.charAt(0).toUpperCase() : '·';
+    const accountMenuOpen = !!model.accountMenuOpen;
 
     // Inactive panels available to add via the pill in the subbar
     const inactive = layoutGetInactive();
@@ -49,14 +50,16 @@ function homeView() {
             <span class="tsl-label tsl-large">A</span>
         </div>
         ${langSwitcher()}
-        <button class="pill"><span class="av">${escHtml(avatar)}</span>${escHtml(username)}</button>
+        <div class="account-wrap${accountMenuOpen ? ' open' : ''}">
+            <button class="pill ${accountMenuOpen ? 'on' : ''}"
+                    onclick="event.stopPropagation(); toggleAccountMenu();">
+                <span class="av">${escHtml(avatar)}</span>${escHtml(username)}
+            </button>
+            ${accountMenuOpen ? _renderAccountMenu(username) : ''}
+        </div>
         <button class="btn-light ${darkOn ? 'on' : ''}"
                 onclick="themeToggle()"
                 title="${darkOn ? t('btn_dark') : t('btn_light')}"></button>
-        ${(model.billing && model.billing.enabled && model.billing.status !== 'grandfathered') ? `
-            <button class="btn-logout" onclick="openBillingPortal()" title="${t('paywall_manage')}">${t('paywall_manage')}</button>
-        ` : ''}
-        <button class="btn-logout" onclick="doLogout()">${t('btn_logout')}</button>
     </div>
 
     <div class="subbar">
@@ -486,4 +489,59 @@ function mdToHtml(str) {
     });
 
     return s;
+}
+
+// ── ACCOUNT MENU ─────────────────────────────────────────────────────────────
+// Dropdown shown under the username pill. Surfaces subscription status, a
+// "Manage subscription" link to Stripe's customer portal (where the user can
+// cancel any time), and Sign out. Stops click propagation so clicks inside the
+// menu don't trigger the document-level close handler in views.js.
+function _renderAccountMenu(username) {
+    const billing = model.billing || {};
+    const status = billing.status || 'none';
+    const isGrandfathered = status === 'grandfathered';
+    const showManage = billing.enabled && !isGrandfathered && status !== 'none';
+
+    // Status label + secondary date line
+    const statusKey = `account_status_${status}`;
+    const statusLabel = t(statusKey) === statusKey ? t('account_status_none') : t(statusKey);
+
+    let dateLine = '';
+    if (billing.currentPeriodEnd) {
+        const dateStr = _fmtPeriodEnd(billing.currentPeriodEnd);
+        if (status === 'trialing')       dateLine = t('account_trial_until').replace('{date}', dateStr);
+        else if (status === 'active')    dateLine = t('account_renews_on').replace('{date}', dateStr);
+        else if (status === 'past_due')  dateLine = t('account_period_until').replace('{date}', dateStr);
+    }
+
+    // Stripe's customer portal handles cancellation, so the "cancel" link
+    // and the "manage" link both point at the same portal. We label it
+    // "Cancel subscription" because that's what most people open it for.
+    const cancelLabel = t('account_cancel_subscription');
+
+    return /*html*/`
+        <div class="account-menu" onclick="event.stopPropagation();">
+            <div class="account-menu-head">
+                <div class="account-menu-eyebrow">${t('account_signed_in_as')}</div>
+                <div class="account-menu-user">${escHtml(username)}</div>
+            </div>
+            <div class="account-menu-status">
+                <span class="account-menu-status-dot status-${status}"></span>
+                <span class="account-menu-status-label">${statusLabel}</span>
+            </div>
+            ${dateLine ? `<div class="account-menu-meta">${escHtml(dateLine)}</div>` : ''}
+            <div class="account-menu-sep"></div>
+            ${showManage ? `
+                <button class="account-menu-item" onclick="openBillingPortal()">
+                    ${t('paywall_manage')}
+                </button>
+                <button class="account-menu-item account-menu-item--danger" onclick="openBillingPortal()">
+                    ${cancelLabel}
+                </button>
+            ` : ''}
+            <button class="account-menu-item" onclick="doLogout()">
+                ${t('btn_logout')}
+            </button>
+        </div>
+    `;
 }

@@ -33,6 +33,7 @@ const model = {
     isDarkmode: false,
     textScale: 1,
     addPanelOpen: false,
+    accountMenuOpen: false,
     boardManage: false,
     tileLayout: [],
 

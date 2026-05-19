@@ -21,14 +21,14 @@ function updateView() {
 model.tileLayout = layoutLoad();
 updateView();
 
-// Close the add-board dropdown when clicking anywhere outside it.
-// Both the pill and the picker stopPropagation, so a real outside click
-// reaches this handler with model.addPanelOpen still true.
+// Close any open topbar dropdown when clicking anywhere outside it. The
+// triggering pill and the dropdown itself stopPropagation, so a real outside
+// click reaches this handler with at least one of the *Open flags still true.
 document.addEventListener('click', () => {
-    if (model.addPanelOpen) {
-        model.addPanelOpen = false;
-        updateView();
-    }
+    let changed = false;
+    if (model.addPanelOpen)     { model.addPanelOpen     = false; changed = true; }
+    if (model.accountMenuOpen)  { model.accountMenuOpen  = false; changed = true; }
+    if (changed) updateView();
 });
 
 // ── INITIAL ROUTING ──────────────────────────────────────────────────────────

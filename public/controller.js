@@ -128,6 +128,24 @@ async function openBillingPortal() {
     }
 }
 
+// Account menu (the dropdown under the username pill in the home topbar).
+function toggleAccountMenu() {
+    model.accountMenuOpen = !model.accountMenuOpen;
+    // Close the add-board dropdown if it's open so we don't show two at once.
+    if (model.accountMenuOpen) model.addPanelOpen = false;
+    updateView();
+}
+
+// Format a unix-seconds timestamp as a short locale-aware date.
+function _fmtPeriodEnd(unixSec) {
+    if (!unixSec) return '';
+    const d = new Date(unixSec * 1000);
+    if (Number.isNaN(d.getTime())) return '';
+    const day = d.getDate();
+    const month = t('mo_' + d.getMonth());
+    return lang === 'no' ? `${day}. ${month}` : `${month} ${day}`;
+}
+
 function doLogout() {
     API.logout();
     localStorage.removeItem('mb_onboarding_pending');
