@@ -295,9 +295,14 @@ function requireActiveSubscription(req, res, next) {
 
 // Returns current billing state for the logged-in user, plus the public price
 // info the paywall view needs to render. Never returns secret keys.
-app.get('/api/billing/status', auth, (req, res) => {
-    const user = getUserById(req.user.id);
+app.get('/api/billing/status', auth, async (req, res) => {
+    let user = getUserById(req.user.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // If the webhook didn't reach us, this re-pulls the truth from Stripe
+    // and updates our row. Then we re-read the user before responding.
+    await resyncFromStripeIfStuck(user);
+    user = getUserById(req.user.id);
 
     const access = hasAccess(user);
     res.json({
@@ -401,6 +406,7 @@ app.post('/api/billing/portal', auth, async (req, res) => {
 // mirror only what we need to decide hasAccess().
 async function stripeWebhook(req, res) {
     if (!stripe || !STRIPE_WEBHOOK_SECRET) {
+        console.error('Stripe webhook: rejected — webhook not configured (missing STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET for current mode)');
         return res.status(503).send('Webhook not configured');
     }
 
@@ -409,18 +415,26 @@ async function stripeWebhook(req, res) {
     try {
         event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
     } catch (err) {
-        console.error('Stripe webhook signature failed:', err.message);
+        console.error(`Stripe webhook: signature verification failed (${err.message}). Check STRIPE_WEBHOOK_SECRET_${STRIPE_MODE.toUpperCase()} matches the secret shown in the Stripe Dashboard for this endpoint.`);
         return res.status(400).send(`Webhook signature verification failed: ${err.message}`);
     }
+
+    console.log(`Stripe webhook: ${event.type} (${event.id})`);
 
     try {
         switch (event.type) {
             case 'checkout.session.completed': {
                 const session = event.data.object;
                 const userId = parseInt(session.metadata?.user_id, 10);
-                if (userId && session.subscription) {
+                if (!userId) {
+                    console.error(`Stripe webhook: ${event.type} has no user_id in metadata — can't link to a user. session=${session.id}`);
+                    break;
+                }
+                if (session.subscription) {
                     const sub = await stripe.subscriptions.retrieve(session.subscription);
                     applySubscriptionToUser(userId, sub, session.customer);
+                } else {
+                    console.error(`Stripe webhook: checkout.session.completed has no subscription id. session=${session.id}`);
                 }
                 break;
             }
@@ -429,14 +443,18 @@ async function stripeWebhook(req, res) {
             case 'customer.subscription.deleted': {
                 const sub = event.data.object;
                 const userId = parseInt(sub.metadata?.user_id, 10) || findUserByCustomerId(sub.customer);
-                if (userId) applySubscriptionToUser(userId, sub, sub.customer);
+                if (!userId) {
+                    console.error(`Stripe webhook: ${event.type} couldn't find a matching local user. customer=${sub.customer} sub=${sub.id}`);
+                    break;
+                }
+                applySubscriptionToUser(userId, sub, sub.customer);
                 break;
             }
             // Failed payments leave the subscription in past_due — covered above.
         }
         res.json({ received: true });
     } catch (err) {
-        console.error('Webhook handler error:', err);
+        console.error('Stripe webhook: handler error:', err);
         // Returning 200 still — Stripe will retry if we 500, but a handler bug
         // shouldn't cause infinite retries. We logged it; investigate manually.
         res.status(200).json({ received: true, handler_error: true });
@@ -449,15 +467,59 @@ function findUserByCustomerId(customerId) {
     return rows[0]?.id || null;
 }
 
+// Stripe API versions >= 2025-03-31 moved current_period_end off the
+// Subscription object onto each subscription item. Read whichever is present
+// so the same code works against old and new API versions.
+function subscriptionPeriodEnd(subscription) {
+    if (subscription.current_period_end) return subscription.current_period_end;
+    const items = subscription.items?.data || [];
+    for (const it of items) {
+        if (it.current_period_end) return it.current_period_end;
+    }
+    return 0;
+}
+
 function applySubscriptionToUser(userId, subscription, customerId) {
     // Map Stripe's status onto our column. 'canceled' or 'incomplete_expired'
     // means access is over now. Otherwise mirror what Stripe says.
     let status = subscription.status; // trialing | active | past_due | canceled | unpaid | incomplete | incomplete_expired
     if (status === 'incomplete_expired' || status === 'unpaid') status = 'canceled';
 
-    const periodEnd = subscription.current_period_end || 0;
+    const periodEnd = subscriptionPeriodEnd(subscription);
     run(`UPDATE users SET subscription_status = ?, stripe_subscription_id = ?, stripe_customer_id = COALESCE(stripe_customer_id, ?), subscription_current_period_end = ? WHERE id = ?`,
         [status, subscription.id, customerId || null, periodEnd, userId]);
+    console.log(`Stripe: applied sub ${subscription.id} status=${status} period_end=${periodEnd} to user ${userId}`);
+}
+
+// Self-heal: if our local row says "no subscription" but the user has a
+// Stripe customer (i.e. they went through checkout), ask Stripe what their
+// subscription actually looks like and mirror it locally. Covers the case
+// where the webhook never reached us (bad URL, wrong secret, brief outage).
+// Safe to call on every /api/billing/status; cheap when there's nothing to do.
+async function resyncFromStripeIfStuck(user) {
+    if (!user || !stripe) return;
+    if (!user.stripe_customer_id) return;
+    const s = user.subscription_status;
+    // Only resync when we'd otherwise tell the user "no access" — don't
+    // hammer Stripe for every status check from a healthy subscriber.
+    if (s === 'trialing' || s === 'active' || s === 'grandfathered') return;
+
+    try {
+        const list = await stripe.subscriptions.list({
+            customer: user.stripe_customer_id,
+            status: 'all',
+            limit: 5,
+        });
+        // Prefer an active/trialing/past_due subscription; fall back to most recent
+        const live = list.data.find(x => x.status === 'trialing' || x.status === 'active' || x.status === 'past_due');
+        const sub  = live || list.data[0];
+        if (sub) {
+            console.log(`Stripe: resync recovered user ${user.id} (was '${s}', stripe says '${sub.status}')`);
+            applySubscriptionToUser(user.id, sub, user.stripe_customer_id);
+        }
+    } catch (err) {
+        console.error(`Stripe: resync for user ${user.id} failed:`, err.message);
+    }
 }
 
 // ── DATA ROUTES ───────────────────────────────────────────────────────────────
