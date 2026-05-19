@@ -12,6 +12,7 @@ MyBoard is a personal canvas you grow over time. Capture interests, questions, g
    ```
    JWT_SECRET=some-long-random-string-here
    ANTHROPIC_API_KEY=sk-ant-...   # optional, enables the 🤖 AI buttons
+   AI_BUDGET_EUR_PER_MONTH=4      # optional, soft per-user monthly cap on AI cost
    APP_URL=https://your.domain    # required for Stripe redirects
    # ── Stripe (see "Paywall" section below) ─────────────────────────────
    STRIPE_MODE=test               # 'test' or 'live'. Stays 'test' until you flip it.

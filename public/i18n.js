@@ -196,6 +196,7 @@ const LANGS = {
         // AI
         ai_define:        'Forklar med AI',
         ai_answer:        'Svar med AI',
+        ai_budget_exceeded: 'AI-grensen for denne måneden er brukt opp. Tilbake snart.',
         ai_ingredients:   'Foreslå ingredienser med AI',
         ai_instructions:  'Lag instruksjoner med AI',
         meal_edit:        'Rediger',
@@ -429,6 +430,7 @@ const LANGS = {
         // AI
         ai_define:        'Define with AI',
         ai_answer:        'Answer with AI',
+        ai_budget_exceeded: 'AI limit for this month is used up. Back soon.',
         ai_ingredients:   'Suggest ingredients with AI',
         ai_instructions:  'Generate instructions with AI',
         meal_edit:        'Edit',

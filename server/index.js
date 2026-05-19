@@ -51,6 +51,54 @@ function billingConfigured() {
 
 console.log(`Stripe: ${STRIPE_ENABLED ? `enabled (${STRIPE_MODE} mode, ${billingConfigured() ? 'configured' : 'NOT FULLY CONFIGURED — paywall disabled'})` : 'disabled'}`);
 
+// ── AI COST GUARDRAIL ────────────────────────────────────────────────────────
+// Soft monthly cap per user, in EUR. When tripped the /api/ai endpoint returns
+// 429 with code 'ai_budget_exceeded'; the rest of the app keeps working.
+// Tune via AI_BUDGET_EUR_PER_MONTH env var. The pricing constants below are
+// Anthropic Haiku 4.5 list prices in USD/M tokens, converted to EUR with a
+// fixed FX rate (USD→EUR ~0.92, biased slightly upward for safety).
+const AI_BUDGET_EUR_PER_MONTH = parseFloat(process.env.AI_BUDGET_EUR_PER_MONTH || '4');
+const HAIKU_INPUT_EUR_PER_TOKEN  = 1.00 * 0.92 / 1_000_000;  // ~€0.00000092
+const HAIKU_OUTPUT_EUR_PER_TOKEN = 5.00 * 0.92 / 1_000_000;  // ~€0.0000046
+const AI_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
+
+function aiCostEur(inTokens, outTokens) {
+    return (inTokens || 0) * HAIKU_INPUT_EUR_PER_TOKEN
+         + (outTokens || 0) * HAIKU_OUTPUT_EUR_PER_TOKEN;
+}
+
+// Refresh the per-user budget window if the previous one has expired, then
+// return { spentEur, remainingEur, resetAtMs }. Pure read + housekeeping.
+function aiBudgetState(userId) {
+    const user = getUserById(userId);
+    if (!user) return { spentEur: 0, remainingEur: AI_BUDGET_EUR_PER_MONTH, resetAtMs: Date.now() + AI_PERIOD_MS };
+
+    const now = Date.now();
+    let periodStart = user.ai_period_start || 0;
+    let tokensIn  = user.ai_tokens_in  || 0;
+    let tokensOut = user.ai_tokens_out || 0;
+
+    // Reset window if it expired (or never started)
+    if (!periodStart || now > periodStart + AI_PERIOD_MS) {
+        periodStart = now;
+        tokensIn = 0;
+        tokensOut = 0;
+        run('UPDATE users SET ai_period_start = ?, ai_tokens_in = 0, ai_tokens_out = 0 WHERE id = ?', [periodStart, userId]);
+    }
+
+    const spentEur = aiCostEur(tokensIn, tokensOut);
+    return {
+        spentEur,
+        remainingEur: Math.max(0, AI_BUDGET_EUR_PER_MONTH - spentEur),
+        resetAtMs: periodStart + AI_PERIOD_MS,
+    };
+}
+
+function aiRecordUsage(userId, inTokens, outTokens) {
+    run('UPDATE users SET ai_tokens_in = ai_tokens_in + ?, ai_tokens_out = ai_tokens_out + ? WHERE id = ?',
+        [inTokens || 0, outTokens || 0, userId]);
+}
+
 // New canonical DB path. If a legacy gnists.db exists in the same dir, use that
 // (so existing deployments migrate seamlessly without losing data).
 const DATA_DIR = path.join(__dirname, '../data');
@@ -104,6 +152,11 @@ async function initDB() {
     addCol('stripe_subscription_id',          'TEXT');
     addCol('subscription_status',             "TEXT DEFAULT 'none'");
     addCol('subscription_current_period_end', 'INTEGER DEFAULT 0');
+    // AI cost tracking — see AI_BUDGET_EUR_PER_MONTH below. Stored as raw
+    // token counts so pricing changes don't require a data migration.
+    addCol('ai_tokens_in',                    'INTEGER DEFAULT 0');
+    addCol('ai_tokens_out',                   'INTEGER DEFAULT 0');
+    addCol('ai_period_start',                 'INTEGER DEFAULT 0');
 
     // ONE-TIME grandfather: only on the first boot where subscription_status
     // didn't exist yet. Anyone who already had an account at that moment is
@@ -532,12 +585,14 @@ app.delete('/api/subtasks/:id', auth, requireActiveSubscription, (req, res) => {
 });
 
 // ── AI ROUTE ──────────────────────────────────────────────────────────────────
-// Simple in-memory throttle: max 20 AI calls per user per 5 minutes
+// Short-window spam throttle: max 100 AI calls per user per 5 minutes. Real
+// cost protection lives in the monthly EUR budget cap above; this just stops
+// runaway clients and accidental button-mashing.
 const aiRateBucket = new Map();
 function aiRateLimit(userId) {
     const now = Date.now();
     const windowMs = 5 * 60 * 1000;
-    const max = 20;
+    const max = 100;
     const entry = aiRateBucket.get(userId) || { count: 0, resetAt: now + windowMs };
     if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + windowMs; }
     entry.count += 1;
@@ -548,6 +603,18 @@ function aiRateLimit(userId) {
 app.post('/api/ai', auth, requireActiveSubscription, async (req, res) => {
     if (!anthropic) return res.status(503).json({ error: 'AI is not configured on this server' });
     if (!aiRateLimit(req.user.id)) return res.status(429).json({ error: 'Too many AI requests — try again later' });
+
+    // Soft monthly budget. Returns 429 with a specific code so the client can
+    // show a clear "AI limit reached" message instead of a generic error.
+    const budget = aiBudgetState(req.user.id);
+    if (budget.remainingEur <= 0) {
+        return res.status(429).json({
+            error: 'AI budget for this month is used up',
+            code: 'ai_budget_exceeded',
+            resetAt: budget.resetAtMs,
+            budgetEur: AI_BUDGET_EUR_PER_MONTH,
+        });
+    }
 
     const { kind, text, lang } = req.body;
     if (typeof text !== 'string' || !text.trim()) return res.status(400).json({ error: 'Empty input' });
@@ -582,6 +649,15 @@ app.post('/api/ai', auth, requireActiveSubscription, async (req, res) => {
             system,
             messages: [{ role: 'user', content: text.trim() }],
         });
+
+        // Always charge the user for what the API actually billed us, even on
+        // partial/errored responses below. Anthropic returns usage even on
+        // stop_reason='max_tokens' etc.
+        const usage = response.usage || {};
+        const inTok  = (usage.input_tokens  || 0) + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0);
+        const outTok = usage.output_tokens || 0;
+        aiRecordUsage(req.user.id, inTok, outTok);
+
         const out = (response.content || [])
             .filter(b => b.type === 'text')
             .map(b => b.text)
