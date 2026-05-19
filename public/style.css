@@ -2609,30 +2609,34 @@ ul {
     color: var(--ink);
 }
 .paywall-price-label {
-    color: var(--ink-2);
-    font-size: 15px;
+    color: var(--ink);
+    font-size: 16px;
+    font-weight: 500;
 }
-.paywall-price-row--sub { margin-top: 12px; }
+.paywall-price-row--sub { margin-top: 14px; }
 .paywall-price-then {
-    color: var(--ink-2);
-    font-size: 14px;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 500;
 }
 .paywall-price-monthly {
     font-family: 'Instrument Serif', serif;
-    font-size: 26px;
+    font-size: 28px;
     color: var(--ink);
 }
 .paywall-price-period {
-    color: var(--ink-2);
-    font-size: 14px;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 500;
 }
 .paywall-cancel {
-    margin-top: 14px;
-    padding-top: 12px;
+    margin-top: 16px;
+    padding-top: 14px;
     border-top: 1px dashed var(--line);
-    color: var(--ink-2);
-    font-size: 13px;
+    color: var(--ink);
+    font-size: 14px;
     font-style: italic;
+    opacity: 0.85;
 }
 @media (max-width: 720px) {
     .paywall-price-big { font-size: 38px; }
