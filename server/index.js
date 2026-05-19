@@ -585,12 +585,14 @@ app.delete('/api/subtasks/:id', auth, requireActiveSubscription, (req, res) => {
 });
 
 // ── AI ROUTE ──────────────────────────────────────────────────────────────────
-// Simple in-memory throttle: max 20 AI calls per user per 5 minutes
+// Short-window spam throttle: max 100 AI calls per user per 5 minutes. Real
+// cost protection lives in the monthly EUR budget cap above; this just stops
+// runaway clients and accidental button-mashing.
 const aiRateBucket = new Map();
 function aiRateLimit(userId) {
     const now = Date.now();
     const windowMs = 5 * 60 * 1000;
-    const max = 20;
+    const max = 100;
     const entry = aiRateBucket.get(userId) || { count: 0, resetAt: now + windowMs };
     if (now > entry.resetAt) { entry.count = 0; entry.resetAt = now + windowMs; }
     entry.count += 1;
