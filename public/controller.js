@@ -882,6 +882,16 @@ function toggleQuestion(id) {
 
 // ── AI ────────────────────────────────────────────────────────────────────────
 
+// Turn an error from /api/ai into a user-facing string. Specifically handles
+// the soft monthly budget cap so users see a clear "AI limit reached" message
+// with the reset date, instead of a generic server error.
+function aiErrorMessage(err) {
+    if (err && err.code === 'ai_budget_exceeded') {
+        return t('ai_budget_exceeded');
+    }
+    return err?.message || 'AI request failed';
+}
+
 async function aiDefineKeyword(id, listIndex) {
     const item = model.lists.Nøkkelord?.[listIndex];
     if (!item || model.aiLoading.has(id)) return;
@@ -895,7 +905,7 @@ async function aiDefineKeyword(id, listIndex) {
         model.editingIndex.add(listIndex);
         await API.updateItem(id, { extra: def });
     } catch (err) {
-        toast(err.message, 'error');
+        toast(aiErrorMessage(err), 'error');
     } finally {
         model.aiLoading.delete(id);
         rerenderPanel('Nøkkelord');
@@ -915,7 +925,7 @@ async function aiAnswerQuestion(id) {
         model.expandedQuestion = id;
         await API.updateItem(id, { extra: ans });
     } catch (err) {
-        toast(err.message, 'error');
+        toast(aiErrorMessage(err), 'error');
     } finally {
         model.aiLoading.delete(id);
         rerenderPanel('questions');

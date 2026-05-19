@@ -9,6 +9,8 @@ services:
       - PORT=3000
       - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      # Soft monthly per-user cap on AI spend, in EUR. Default 4.
+      - AI_BUDGET_EUR_PER_MONTH=${AI_BUDGET_EUR_PER_MONTH:-4}
       # ── Stripe (see README §Paywall). Leave blank to disable paywall.
       - APP_URL=${APP_URL:-http://localhost:3000}
       - STRIPE_MODE=${STRIPE_MODE:-test}

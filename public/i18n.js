@@ -196,6 +196,7 @@ const LANGS = {
         // AI
         ai_define:        'Forklar med AI',
         ai_answer:        'Svar med AI',
+        ai_budget_exceeded: 'AI-grensen for denne måneden er brukt opp. Tilbake snart.',
 
         // Panel descriptions (used in onboarding step 2)
         desc_questions:   'Ting du vil finne ut',
@@ -425,6 +426,7 @@ const LANGS = {
         // AI
         ai_define:        'Define with AI',
         ai_answer:        'Answer with AI',
+        ai_budget_exceeded: 'AI limit for this month is used up. Back soon.',
 
         // Panel descriptions (onboarding step 2)
         desc_questions:   'Things you want to find out',
