@@ -19,12 +19,12 @@ function registerView() {
             <div class="field">
                 <span class="field-label">${t('reg_user')}</span>
                 <input class="input" id="regUser" placeholder="${t('reg_user_ph')}"
-                       autocomplete="username">
+                       autocomplete="username" maxlength="50">
             </div>
             <div class="field">
                 <span class="field-label">${t('reg_pass')}</span>
                 <input class="input" id="regPass" placeholder="${t('reg_pass_ph')}" type="password"
-                       autocomplete="new-password"
+                       autocomplete="new-password" maxlength="128"
                        onkeydown="if(event.key==='Enter') _submitRegister()">
             </div>
 
@@ -48,5 +48,8 @@ function _submitRegister() {
     const err  = document.getElementById('regError');
     err.textContent = '';
     if (!user || !pass) { err.textContent = t('err_fill'); return; }
+    if (user.length < 3) { err.textContent = t('err_user_short') || 'Username must be at least 3 characters.'; return; }
+    if (!/^[a-zA-Z0-9_.\-]+$/.test(user)) { err.textContent = t('err_user_chars') || 'Username may only contain letters, numbers, underscores, hyphens and dots.'; return; }
+    if (pass.length < 4) { err.textContent = t('err_pass_short') || 'Password must be at least 4 characters.'; return; }
     doRegister(user, pass, err);
 }

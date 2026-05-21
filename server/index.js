@@ -236,10 +236,16 @@ function auth(req, res, next) {
 
 // ── AUTH ROUTES ───────────────────────────────────────────────────────────────
 app.post('/api/register', async (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Missing username or password' });
-    if (username.length < 3) return res.status(400).json({ error: 'Username must be at least 3 characters' });
-    if (password.length < 4) return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    const rawUser = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    if (!rawUser || !password) return res.status(400).json({ error: 'Missing username or password' });
+    if (rawUser.length < 3)  return res.status(400).json({ error: 'Username must be at least 3 characters' });
+    if (rawUser.length > 50) return res.status(400).json({ error: 'Username must be 50 characters or fewer' });
+    if (!/^[a-zA-Z0-9_.\-]+$/.test(rawUser)) return res.status(400).json({ error: 'Username may only contain letters, numbers, underscores, hyphens and dots' });
+    if (password.length < 4)   return res.status(400).json({ error: 'Password must be at least 4 characters' });
+    // Guard against bcrypt DoS — bcrypt truncates at 72 bytes but still allocates/processes the full string.
+    if (password.length > 128) return res.status(400).json({ error: 'Password must be 128 characters or fewer' });
+    const username = rawUser;
 
     const existing = query('SELECT id FROM users WHERE username = ?', [username]);
     if (existing.length > 0) return res.status(409).json({ error: 'Username is already taken' });
@@ -253,7 +259,10 @@ app.post('/api/register', async (req, res) => {
 });
 
 app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
+    const username = typeof req.body.username === 'string' ? req.body.username.trim() : '';
+    const password = typeof req.body.password === 'string' ? req.body.password : '';
+    if (!username || !password) return res.status(401).json({ error: 'Wrong username or password' });
+    if (username.length > 50 || password.length > 128) return res.status(401).json({ error: 'Wrong username or password' });
     const users = query('SELECT * FROM users WHERE username = ?', [username]);
     if (!users.length) return res.status(401).json({ error: 'Wrong username or password' });
 

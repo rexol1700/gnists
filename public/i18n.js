@@ -36,6 +36,9 @@ const LANGS = {
         reg_links:        'Har du allerede en? <a onclick="changePage(\'login\')">Logg inn.</a>',
 
         err_fill:         'Fyll inn brukernavn og passord.',
+        err_user_short:   'Brukernavnet må ha minst 3 tegn.',
+        err_user_chars:   'Brukernavnet kan bare inneholde bokstaver, tall, understrek, bindestrek og punktum.',
+        err_pass_short:   'Passordet må ha minst 4 tegn.',
 
         // Onboarding
         ob_skip:          'Hopp over',
@@ -282,6 +285,9 @@ const LANGS = {
         reg_links:        'Already have one? <a onclick="changePage(\'login\')">Sign in.</a>',
 
         err_fill:         'Please enter username and password.',
+        err_user_short:   'Username must be at least 3 characters.',
+        err_user_chars:   'Username may only contain letters, numbers, underscores, hyphens and dots.',
+        err_pass_short:   'Password must be at least 4 characters.',
 
         // Onboarding
         ob_skip:          'Skip setup',
