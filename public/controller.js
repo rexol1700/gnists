@@ -113,8 +113,14 @@ async function waitForActivation() {
         await new Promise(r => setTimeout(r, 1500));
     }
     // Webhook is slow or misconfigured — fall through to the app and let any
-    // gated request 402 if access truly isn't there yet.
-    try { await loadData(); model.page = 'home'; } catch (e) { model.page = 'paywall'; }
+    // gated request 402 if access truly isn't there yet. Do NOT overwrite the
+    // page if loadData() already routed us to the paywall (via a 402).
+    try {
+        await loadData();
+        if (model.page !== 'paywall') model.page = 'home';
+    } catch (e) {
+        model.page = 'paywall';
+    }
     updateView();
 }
 
@@ -300,21 +306,21 @@ async function obFinish() {
         return;
     }
 
-    // 3) Has access — save the spark and drop into the board
+    // 3) Has access — save the spark to the server, then load a clean copy of
+    //    this user's data. This also clears any stale data left in the model
+    //    from a previous user who was logged in the same browser session.
     if (sparkValid) {
         try {
             if (target === 'tasks') {
-                const r = await API.addTask(spark);
-                model.tasks.push({ id: r.id, task: spark, ischecked: false, subtasks: [] });
+                await API.addTask(spark);
             } else {
-                const r = await API.addItem(target, spark);
-                if (!model.lists[target]) model.lists[target] = [];
-                model.lists[target].push({ id: r.id, value: spark, extra: '' });
+                await API.addItem(target, spark);
             }
         } catch (err) {
             toast(err.message, 'error');
         }
     }
+    await loadData();
     changePage('home');
 }
 

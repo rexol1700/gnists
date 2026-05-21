@@ -325,9 +325,11 @@ function tileBottomDrop(event) {
     const rows = model.tileLayout;
     if (!rows.length) return;
     const lastRow = rows[rows.length - 1];
-    const lastCell = lastRow[lastRow.length - 1];
-    if (lastCell.id === _tileDragging) return;
-    layoutMovePanel(_tileDragging, lastCell.id, 'bottom');
+    // Find a reference cell in the last row that is NOT the dragged panel.
+    // If the dragged panel is alone in the last row it is already its own row — no-op.
+    const refCell = lastRow.find(c => c.id !== _tileDragging);
+    if (!refCell) return;
+    layoutMovePanel(_tileDragging, refCell.id, 'bottom');
 }
 
 // ── RESIZE HANDLE ─────────────────────────────────────────────────────────────
@@ -398,7 +400,8 @@ function spinReset(listName, btn) {
     btn.classList.remove('spinning');
     void btn.offsetWidth;
     btn.classList.add('spinning');
-    btn.addEventListener('animationend', () => btn.classList.remove('spinning'), { once: true });
+    // resetList() will re-render the panel (replacing the button element), so
+    // we don't rely on animationend on the soon-to-be-detached node.
     resetList(listName);
 }
 
