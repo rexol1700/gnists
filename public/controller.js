@@ -112,14 +112,15 @@ async function waitForActivation() {
         } catch (e) { /* keep polling */ }
         await new Promise(r => setTimeout(r, 1500));
     }
-    // Webhook is slow or misconfigured — fall through to the app and let any
-    // gated request 402 if access truly isn't there yet. Do NOT overwrite the
-    // page if loadData() already routed us to the paywall (via a 402).
-    try {
-        await loadData();
-        if (model.page !== 'paywall') model.page = 'home';
-    } catch (e) {
-        model.page = 'paywall';
+    // Webhook is slow or misconfigured — fall through to the app.
+    // loadData() handles all errors internally and never rethrows:
+    //   402  → fetchBillingAndRoute() → model.page = 'paywall'
+    //   auth → API.logout() + changePage('landing') → model.page = 'landing'
+    // Only force 'home' when loadData() left the page on the activation screen
+    // (billing-success) with no opinion of its own.
+    await loadData();
+    if (model.page !== 'paywall' && model.page !== 'landing') {
+        model.page = 'home';
     }
     updateView();
 }
