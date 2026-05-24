@@ -1,0 +1,9 @@
+{
+  "name": "myboard-frontend-shim",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Supervisor shim that starts the MyBoard Express server on PORT 3000. The actual frontend (vanilla JS) lives in /app/public and the API in /app/server.",
+  "scripts": {
+    "start": "JWT_SECRET=${JWT_SECRET:-devsecret} PORT=3000 node ../server/index.js"
+  }
+}
