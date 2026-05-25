@@ -1,92 +1,86 @@
-# MyBoard — Product Requirements Document
+# MyBoard Mobile (Flutter) — PRD
 
-## Original Problem Statement
-> "I want to add two more panels to my myboard project. A calendar and a habit tracker"
+## Original problem statement
+> Build a mobile app: From my webapp "myboard" create a multiplatform app with dart and flutter. So that it works on ios and android
 
-### User-confirmed choices (1st clarification round)
-- **Calendar**: Full-featured month/week/day view. *No* category tagging (user feedback: "it's your calendar — doesn't matter if work or personal").
-- **Habit Tracker**: Habits with categories, reminders, goals, and analytics chart (progress chart).
-- **Persistence**: Backend (server-stored per user). MyBoard uses Express + sql.js (SQLite), which already persists per-user via the existing `items` table — the new panels reuse it.
-- **Design**: Match the existing MyBoard panel style (warm paper, sage/coral accents, Instrument Serif headings, Geist sans body).
-- **Behaviour**: New panels must function in conjunction with existing panels (drag/resize, hide, dark-mode, layout persistence).
+Source webapp: https://github.com/rexol1700/gnists (live at https://myboard.org)
+Stack: Node.js + Express + SQLite + bcrypt JWT auth, Anthropic Haiku 4.5 AI buttons, Stripe paywall.
 
 ## Architecture
-- **Frontend**: Vanilla JS in `/app/public/`, served by Express on port 3000.
-- **Backend (logic)**: Node.js + Express in `/app/server/index.js`, port 3000. SQLite via sql.js. JWT auth.
-- **Backend (proxy)**: FastAPI at `/app/backend/server.py` on port 8001 — Kubernetes ingress routes `/api/*` to 8001, this proxy forwards everything to Express on localhost:3000.
-- **Frontend supervisor shim**: `/app/frontend/package.json` `start` runs `node ../server/index.js` so supervisor's `yarn start` works.
+- Single Flutter project at `/app/mobile`
+- Targets: **iOS + Android** (web works for smoke tests but isn't a target)
+- Talks to existing backend at `https://myboard.org` (override with `--dart-define=API_BASE=...`)
+- State: lightweight `ChangeNotifier` (`AppState`), `SharedPreferences` for persistence
+- HTTP: `package:http`. Auth via Bearer JWT (7-day sessions, mirrors web)
+- Type: `Instrument Serif` (display) + `Inter` (body — closest Geist sibling on Google Fonts) + `JetBrains Mono` (labels) via `google_fonts`
+- Markdown rendering via `flutter_markdown` for AI answers + recipe instructions
 
-## User Personas
-1. **Personal-canvas user** — uses MyBoard daily for a mix of tasks, notes, reminders. Now adds Calendar to track meetings and Habits to keep a daily routine streak.
-2. **Trial user** — discovers calendar + habits as part of the standard panel picker during/after onboarding.
+## User personas
+1. **Janis-style power user** — keeps a personal board, dozens of items, daily capture from phone
+2. **Casual capture** — opens app, dumps a thought into "Questions" or "Sparks", forgets about it
+3. **Recipe planner** — uses the Meals panel + AI to expand ingredients/instructions
 
-## Core Static Requirements
-- All existing panels must keep working (Questions, Keywords, Tasks, Reminders, Notes, Meals, Bills, Times, Selling, Shopping, Motivations, Learning).
-- New panels integrate via existing `panelRegistry` + `panelRenderers` dispatcher pattern.
-- Data persists per user via the existing `items` table (`list_name='calendar'` or `'habits'`, `extra` holds JSON).
-- Layout (which panels are on the board, in what order, with what flex) stays in client localStorage — same as today.
+## Core requirements (static)
+- Same domain model as web: user → many items (in named lists) → optional subtasks
+- Same wire format: `GET /api/data` returns `{lists: {name: [items]}, tasks: [task]}`
+- 14 panel types: questions, interests, tasks (+subtasks), reminders, keywords, shopping, notes, meals, bills, times, selling, motivations, learningGoals, habits (calendar omitted from MVP — uses generic simple list)
+- AI buttons: define, answer, ingredients, instructions
+- NO/EN i18n, light/dark theme
+- 7-day JWT sessions persisted across launches
 
-## What's been implemented — 2026-01-24
+## What's implemented (May 25, 2026)
+- ✅ Auth: register, login, logout, persistent JWT (`SharedPreferences`)
+- ✅ Landing screen with sage halo, italic-accented hero, CTA buttons
+- ✅ Auth screen (login ↔ register toggle, password show/hide, error states)
+- ✅ Onboarding 4-step flow: welcome, pick boards (grid with check toggles), first spark (textarea + target list dropdown), ready summary
+- ✅ Home board: paper canvas, scrollable panel feed, pull-to-refresh, "Add a board" bottom sheet, settings sheet (avatar, language, theme, sign out)
+- ✅ All 14 panel renderers with full CRUD against the real API:
+    - Simple list (interests, motivations, learningGoals, calendar)
+    - Tasks with subtasks + checkbox states
+    - Reminders with date pickers + overdue/today coloring
+    - Questions with Anthropic AI answer + markdown rendering
+    - Keywords with AI definitions + inline editor
+    - Check-list (shopping, habits)
+    - Notes (collapsible title + serif body)
+    - Meals (tabs: ingredients with AI suggest, instructions with AI write + markdown preview)
+    - Bills (amount + due date, overdue coloring)
+    - Times (HH:MM + recurrence dropdown)
+    - Selling (price + listed/pending/sold dropdown)
+- ✅ AI button widget: spinner state, handles 503 (not configured), 429 'ai_budget_exceeded' (shows reset countdown), generic errors
+- ✅ i18n: full EN + NO string tables matching web's i18n.js keys
+- ✅ Theme: light + dark, full design-token parity with `public/style.css`
+- ✅ Subscription-required state: friendly "open the web app to subscribe" screen with retry
+- ✅ Android + iOS platform folders scaffolded, Dart code compiles cleanly (`flutter analyze` → 0 errors, 8 info-level hints)
+- ✅ Smoke-tested via Flutter Web build — renders pixel-correct vs the web design
 
-### Panel: Calendar (`id: 'calendar'`)
-- Three views: **Month** (6-row × 7-col grid), **Week** (7-column day cards), **Day** (chronological event list).
-- Prev / Today / Next navigation aware of the active view (month ±1 month, week ±7d, day ±1d).
-- Today is auto-highlighted (filled ink circle on the date number).
-- Click an empty day → modal editor for new event.
-- Click an existing event chip → modal editor in edit mode (with Delete button).
-- Event editor: title (required), date (date picker), time (time picker, optional → renders as "All day"), description (textarea), color (sage / coral / ink / amber / blue swatch).
-- Server-persisted via existing `POST/PATCH/DELETE /api/data/...` endpoints; `extra` stores `JSON.stringify({date, time, desc, color})`.
-- Item count badge on the panel header shows total events.
+## What's NOT implemented (deliberate)
+- ❌ Stripe paywall UI (user explicitly excluded; AI budget = soft demo limit instead). App handles 402 gracefully.
+- ❌ Panel reorder / drag-resize (web has it; doesn't fit single-column mobile feed)
+- ❌ Calendar view (web has it; substituted with simple list)
+- ❌ Push notifications for reminders (server has no push infrastructure)
+- ❌ Offline mode / local cache
 
-### Panel: Habit Tracker (`id: 'habits'`)
-- Three views: **Today** (list of habits with one-tap check-off), **Week** (Mon→Sun 7-day grid per habit, click any cell to toggle a past day; future days disabled), **Stats** (per-habit card with 4 metrics + 30-day bar chart).
-- Adding a habit = single-line input + Enter. Server-persisted with default `extra = {category:'',target:7,reminder:'',goal:'',completions:[]}`.
-- One-tap toggle (sage check circle) marks/unmarks today; fires PATCH to update `completions: [YYYY-MM-DD, ...]`.
-- Expand a habit (▼ chevron) to edit category, weekly target (1–7), reminder time, and goal text — Save persists.
-- Streak badge ("🔥 N") appears when the active streak ≥ 1.
-- Stats card shows: **completions in last 30 days** (`x/30`), **completion rate %**, **current streak**, **best streak**, plus a sparkline (30 small bars, sage when completed).
-- Item count badge on the panel header shows total habits.
+## Backlog (P1 → P2)
+- **P1** Add a server-side "mobile demo bypass" so non-subscribed users can taste the app
+    - Easiest: `STRIPE_ENABLED=false` on the server, OR add a `requireActiveSubscriptionExceptMobile()` helper and detect a `X-MyBoard-Client: mobile` header
+- **P1** Push notifications for reminders (FCM/APNs + a small `/api/devices/register` endpoint)
+- **P2** Native-feeling drag-to-reorder for panels (Flutter `ReorderableListView`)
+- **P2** Calendar view with dated agenda (uses existing `reminders` + `times` + `bills`)
+- **P2** Offline-first: cache `GET /api/data` to disk, retry mutations on reconnect
+- **P2** Biometric unlock (FaceID / fingerprint) after login
 
-### Plumbing changes
-- `panelRegistry.js`: two new entries (`calendar` span=2, `habits` span=1).
-- `panelRenderers.js`: dispatcher cases added for `'calendar'` and `'habits'`.
-- `calendarHabits.js`: new file holding all calendar/habits render functions + date helpers.
-- `controller.js`: appended ~12 calendar + 7 habit functions (navigation, CRUD, view toggles, editor open/close/save).
-- `model.js`: added state for `lists.calendar`, `lists.habits`, calendar cursor/view/editor flags, habits view/expand state.
-- `i18n.js`: added all `sec_calendar`, `sec_habits`, `cal_*`, `hab_*`, full month names `mof_*` and short weekday names `wds_*` for EN + NO.
-- `index.html`: registered the new `calendarHabits.js` script tag.
-- `style.css`: appended a self-contained "CALENDAR + HABITS PANELS" section with event-color tokens, dark-mode tweaks, and responsive fallback under 720px.
-- Renamed `/app/public/api.js` → `myboard-client.js` (and updated the script tag) because the platform's `/api*` ingress rule was hijacking it.
+## How to run
+```bash
+cd /app/mobile
+flutter pub get
+flutter run             # connected device or emulator
+flutter build apk --release   # Android sideload .apk
+flutter build ios --release   # macOS + Xcode required
+```
+Override backend: `flutter run --dart-define=API_BASE=https://your.backend`
 
-### Persistence & isolation
-- Per-user, server-side (SQLite). Verified by the testing subagent: 16/16 backend tests passing, including cross-user isolation.
-
-## Backlog / Future ideas (not in scope)
-### P1
-- Recurring events (daily / weekly / monthly) for the calendar.
-- Native push reminders (right now habit "reminder" is just a stored time; no notification firing).
-- iCal / Google Calendar import-export.
-
-### P2
-- Habit categories surfaced as filter tabs in Week/Stats views.
-- Drag-to-create event in Week view (click-drag from start to end time).
-- Per-habit goal completion progress (e.g. "3/5 sessions this week" badge).
-- Heatmap (12-week or 365-day) for Stats view.
-
-### P0 / Smart enhancement
-- **One-click "add to calendar" from existing panels** — e.g. on a Reminder with a due date, surface a "→ add to calendar" affordance so the user doesn't enter the same event twice. Boosts cross-panel value and stickiness.
-
-## Tasks completed
-- [x] Clarify scope with user (calendar full views; habits with categories+reminders+goals+stats; backend persistence; match style)
-- [x] Bootstrap Express + FastAPI proxy under platform supervisor (port 3000 / 8001)
-- [x] Rename `/api.js` → `/myboard-client.js` to dodge ingress
-- [x] Register `calendar` and `habits` in panelRegistry
-- [x] Implement Calendar panel (month/week/day, modal editor, 5 colors)
-- [x] Implement Habit Tracker (today/week/stats, inline editor, streak, 30-bar chart)
-- [x] Add EN + NO i18n strings
-- [x] Append CSS for both panels (light + dark mode)
-- [x] Verified end-to-end (testing subagent — 16/16 backend tests pass; UI flows verified)
-
-## Next Action Items
-- Demo to user — let them try drag-resizing the new panels and using them across a few days.
-- Potential P0 hook: surface a "Add to calendar" affordance on Reminders with a date.
+## Notes for future agents
+- DON'T re-scaffold `android/` or `ios/` (already done with `--org com.myboard`)
+- DON'T add Stripe — user explicitly excluded it
+- DO call `integration_playbook_expert_v2` before swapping the AI provider
+- The font substitutions (Inter for Geist, JetBrains Mono for Geist Mono) are deliberate — Geist isn't on Google Fonts yet. If/when google_fonts adds it, swap `inter`/`jetBrainsMono` → `geist`/`geistMono` in `lib/theme/mb_theme.dart`
