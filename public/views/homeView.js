@@ -495,19 +495,30 @@ function mdToHtml(str) {
 }
 
 // ── ACCOUNT MENU ─────────────────────────────────────────────────────────────
-// Dropdown shown under the username pill. Surfaces subscription status, a
-// "Manage subscription" link to Stripe's customer portal (where the user can
-// cancel any time), and Sign out. Stops click propagation so clicks inside the
+// Dropdown shown under the username pill. Surfaces the user's tier (free /
+// trial / active / etc.), the free-tier AI generation counter when relevant,
+// an "Upgrade" CTA for free users, "Manage subscription" → Stripe portal for
+// paid users, and Sign out. Stops click propagation so clicks inside the
 // menu don't trigger the document-level close handler in views.js.
 function _renderAccountMenu(username) {
     const billing = model.billing || {};
     const status = billing.status || 'none';
+    const tier = billing.tier || (billing.isPaid ? 'paid' : 'free');
+    const isPaidTier = tier === 'paid';
     const isGrandfathered = status === 'grandfathered';
+    // "Manage subscription" goes to the Stripe customer portal. Available
+    // only when the user actually has a Stripe subscription on record (and
+    // isn't a grandfathered free-forever user).
     const showManage = billing.enabled && !isGrandfathered && status !== 'none';
+    // "Upgrade" CTA is shown for any user who is on the free tier (whether
+    // brand new, lapsed past_due, or canceled) — gives them a one-click way
+    // to get back to paid. Hidden for grandfathered users (they already have
+    // it free) and active paid users.
+    const showUpgrade = billing.enabled && !isPaidTier && !isGrandfathered;
 
     // Status label + secondary date line
-    const statusKey = `account_status_${status}`;
-    const statusLabel = t(statusKey) === statusKey ? t('account_status_none') : t(statusKey);
+    const statusKey = isPaidTier ? `account_status_${status}` : 'account_status_free';
+    const statusLabel = t(statusKey) === statusKey ? t('account_status_free') : t(statusKey);
 
     let dateLine = '';
     if (billing.currentPeriodEnd) {
@@ -517,32 +528,45 @@ function _renderAccountMenu(username) {
         else if (status === 'past_due')  dateLine = t('account_period_until').replace('{date}', dateStr);
     }
 
-    // Stripe's customer portal handles cancellation, so the "cancel" link
-    // and the "manage" link both point at the same portal. We label it
-    // "Cancel subscription" because that's what most people open it for.
+    // Free-tier generation counter — shown when on the free plan so the user
+    // always knows how many of their 10 monthly AI generations are left.
+    const free = billing.freeGenerations || {};
+    let usageLine = '';
+    if (!isPaidTier && !isGrandfathered && typeof free.limit === 'number') {
+        usageLine = t('account_free_usage')
+            .replace('{used}', free.used ?? 0)
+            .replace('{limit}', free.limit);
+    }
+
     const cancelLabel = t('account_cancel_subscription');
 
     return /*html*/`
-        <div class="account-menu" onclick="event.stopPropagation();">
+        <div class="account-menu" onclick="event.stopPropagation();" data-testid="account-menu">
             <div class="account-menu-head">
                 <div class="account-menu-eyebrow">${t('account_signed_in_as')}</div>
                 <div class="account-menu-user">${escHtml(username)}</div>
             </div>
             <div class="account-menu-status">
                 <span class="account-menu-status-dot status-${status}"></span>
-                <span class="account-menu-status-label">${statusLabel}</span>
+                <span class="account-menu-status-label" data-testid="account-tier-label">${statusLabel}</span>
             </div>
+            ${usageLine ? `<div class="account-menu-meta" data-testid="account-free-usage">${escHtml(usageLine)}</div>` : ''}
             ${dateLine ? `<div class="account-menu-meta">${escHtml(dateLine)}</div>` : ''}
             <div class="account-menu-sep"></div>
+            ${showUpgrade ? `
+                <button class="account-menu-item account-menu-item--cta" data-testid="account-upgrade-btn" onclick="openUpgrade()">
+                    ${t('account_upgrade')}
+                </button>
+            ` : ''}
             ${showManage ? `
-                <button class="account-menu-item" onclick="openBillingPortal()">
+                <button class="account-menu-item" data-testid="account-manage-btn" onclick="openBillingPortal()">
                     ${t('paywall_manage')}
                 </button>
-                <button class="account-menu-item account-menu-item--danger" onclick="openBillingPortal()">
+                <button class="account-menu-item account-menu-item--danger" data-testid="account-cancel-btn" onclick="openBillingPortal()">
                     ${cancelLabel}
                 </button>
             ` : ''}
-            <button class="account-menu-item" onclick="doLogout()">
+            <button class="account-menu-item" data-testid="account-logout-btn" onclick="doLogout()">
                 ${t('btn_logout')}
             </button>
         </div>

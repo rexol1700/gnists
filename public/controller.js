@@ -20,10 +20,9 @@ function changePage(page) {
 async function doLogin(username, password, errorEl) {
     try {
         await API.login(username, password);
-        // Check billing first — if the user owes money, /api/data will 402
-        // and we'd rather show the paywall than a generic error.
-        const allowed = await fetchBillingAndRoute();
-        if (!allowed) return;
+        // Everyone gets app access now — paywall is non-blocking. Just fetch
+        // billing status so the account menu can show "Free / Trial / Active".
+        try { model.billing = await API.billingStatus(); } catch (e) { /* non-fatal */ }
         await loadData();
         changePage('home');
     } catch (err) {
@@ -34,18 +33,13 @@ async function doLogin(username, password, errorEl) {
 async function doRegister(username, password, errorEl) {
     try {
         const res = await API.register(username, password);
-        // We deliberately do NOT billing-check here. New users go through
-        // onboarding first so they can see what they're paying for — the
-        // paywall comes at the end of obFinish() if they don't have access.
-        // Pre-fetch billing status anyway so the paywall view has price data
-        // ready by the time they arrive.
+        // Pre-fetch billing status so the upgrade view has price data ready
+        // if the user opens it later. New users go straight through
+        // onboarding into the app on the free tier — no payment required.
         try { model.billing = await API.billingStatus(); } catch (e) { /* non-fatal */ }
         if (res && res.isNew) {
             obStart();
         } else {
-            // Existing account being re-created somehow — fall through to billing check
-            const allowed = await fetchBillingAndRoute();
-            if (!allowed) return;
             await loadData();
             changePage('home');
         }
@@ -54,33 +48,20 @@ async function doRegister(username, password, errorEl) {
     }
 }
 
-// Fetch billing status from server. If the user has access (paid /
-// grandfathered / billing disabled), return true. Otherwise route to the
-// paywall and return false so the caller bails out.
-async function fetchBillingAndRoute() {
+// Fetch billing status. Used by the home view + account menu to display
+// the current tier. Never blocks the user — the app is always accessible
+// on the free tier (10 AI generations / month).
+async function refreshBilling() {
     try {
-        const status = await API.billingStatus();
-        model.billing = status;
-        if (status.hasAccess) return true;
-        // No access — paywall it is.
-        model.paywallCurrency = model.paywallCurrency
-            || localStorage.getItem('mb_currency')
-            || ((navigator.language || '').toLowerCase().startsWith('n') ? 'NOK' : 'EUR');
-        changePage('paywall');
-        return false;
+        model.billing = await API.billingStatus();
     } catch (err) {
-        // If status itself fails, keep the user logged in but show a toast.
-        // Don't lock them out of an app they may have legitimate access to.
-        toast(err.message || 'Could not check subscription', 'error');
-        return true;
+        // Non-fatal — leave the menu showing whatever it had.
     }
 }
 
-// Used by views.js boot. Same as fetchBillingAndRoute but if access is
-// granted, loads data and routes to home/onboarding.
+// Used by views.js boot — fetch billing status and route into the app.
 async function routeAfterAuth() {
-    const allowed = await fetchBillingAndRoute();
-    if (!allowed) return;
+    await refreshBilling();
     await loadData();
     if (localStorage.getItem('mb_onboarding_pending') === '1') {
         obStart();
@@ -91,18 +72,16 @@ async function routeAfterAuth() {
 }
 
 // After Stripe Checkout success-redirect, poll the server until the webhook
-// has updated subscription_status. Give up after ~30s and refresh anyway.
+// has updated the user's status to paid. Give up after ~30s and refresh anyway.
 async function waitForActivation() {
     const start = Date.now();
     const timeoutMs = 30000;
     while (Date.now() - start < timeoutMs) {
         try {
             const status = await API.billingStatus();
-            if (status.hasAccess) {
+            if (status.isPaid) {
                 model.billing = status;
                 await loadData();
-                // Restore any spark the user typed during onboarding — they
-                // paid, so honour the thing they captured before checkout.
                 await flushPendingSpark();
                 model.page = 'home';
                 updateView();
@@ -112,14 +91,11 @@ async function waitForActivation() {
         } catch (e) { /* keep polling */ }
         await new Promise(r => setTimeout(r, 1500));
     }
-    // Webhook is slow or misconfigured — fall through to the app.
-    // loadData() handles all errors internally and never rethrows:
-    //   402  → fetchBillingAndRoute() → model.page = 'paywall'
-    //   auth → API.logout() + changePage('landing') → model.page = 'landing'
-    // Only force 'home' when loadData() left the page on the activation screen
-    // (billing-success) with no opinion of its own.
+    // Webhook is slow or misconfigured — drop into the app anyway. Free tier
+    // is fine; the user can retry from the account menu.
+    await refreshBilling();
     await loadData();
-    if (model.page !== 'paywall' && model.page !== 'landing') {
+    if (model.page !== 'landing') {
         model.page = 'home';
     }
     updateView();
@@ -184,9 +160,13 @@ async function loadData() {
         model.lists.habits        = data.lists.habits        || [];
         model.tasks               = data.tasks               || [];
     } catch (err) {
+        // 402 used to mean "subscription required" — kept for backwards
+        // compat with old servers. Drop the user onto the upgrade page
+        // instead of logging them out. New servers never 402 on /api/data.
         if (err.status === 402) {
-            // Subscription lapsed mid-session — route to paywall instead of logout
-            await fetchBillingAndRoute();
+            model.page = 'paywall';
+            await refreshBilling();
+            updateView();
         } else {
             // Token expired or invalid
             API.logout();
@@ -285,33 +265,15 @@ async function obFinish() {
     model.tileLayout = layoutFromPicks(finalIds);
     layoutSave(model.tileLayout);
 
-    // Onboarding itself is "done" once the layout is saved — even if the user
-    // bails at the paywall, we don't want to re-run onboarding on next login.
+    // Onboarding is done — clear the pending flag so a refresh doesn't replay it.
     localStorage.removeItem('mb_onboarding_pending');
 
     const spark = (model.onboardingSpark.text || '').trim();
     const target = model.onboardingSpark.target;
     const sparkValid = spark && finalIds.includes(target);
 
-    // 2) Billing check — if the user doesn't have access yet, defer the spark
-    //    save and route them to the paywall. The pending spark gets written
-    //    to the server after they pay (handled in waitForActivation).
-    const billing = await API.billingStatus().catch(() => null);
-    model.billing = billing;
-    if (billing && billing.enabled && !billing.hasAccess) {
-        if (sparkValid) {
-            localStorage.setItem('mb_pending_spark', JSON.stringify({ spark, target }));
-        }
-        model.paywallCurrency = model.paywallCurrency
-            || localStorage.getItem('mb_currency')
-            || ((navigator.language || '').toLowerCase().startsWith('n') ? 'NOK' : 'EUR');
-        changePage('paywall');
-        return;
-    }
-
-    // 3) Has access — save the spark to the server, then load a clean copy of
-    //    this user's data. This also clears any stale data left in the model
-    //    from a previous user who was logged in the same browser session.
+    // 2) Save the spark to the server, then load a clean copy of this user's
+    //    data. The free tier covers everyone — no paywall block here.
     if (sparkValid) {
         try {
             if (target === 'tasks') {
@@ -324,6 +286,7 @@ async function obFinish() {
         }
     }
     await loadData();
+    await refreshBilling();
     changePage('home');
 }
 
@@ -911,14 +874,48 @@ function toggleQuestion(id) {
 
 // ── AI ────────────────────────────────────────────────────────────────────────
 
-// Turn an error from /api/ai into a user-facing string. Specifically handles
-// the soft monthly budget cap so users see a clear "AI limit reached" message
-// with the reset date, instead of a generic server error.
+// Turn an error from /api/ai into a user-facing string. Handles the two
+// distinct gates: the free-tier 10/month cap (with an upgrade CTA toast)
+// and the paid-tier soft EUR budget (with a "back next month" message).
 function aiErrorMessage(err) {
+    if (err && err.code === 'free_limit_reached') {
+        return t('ai_free_limit_reached');
+    }
     if (err && err.code === 'ai_budget_exceeded') {
         return t('ai_budget_exceeded');
     }
     return err?.message || 'AI request failed';
+}
+
+// Wraps the toast for AI errors so we can attach an "Upgrade" CTA when the
+// free-tier cap is hit. The user can still use the rest of the app — this
+// just nudges them to subscribe for unlimited AI.
+function aiErrorToast(err) {
+    if (err && err.code === 'free_limit_reached') {
+        toast(t('ai_free_limit_reached'), 'error');
+        // Refresh status so the account-menu count is up to date, then
+        // surface the upgrade view after the toast settles.
+        refreshBilling().then(() => updateView());
+        setTimeout(() => openUpgrade(), 600);
+        return;
+    }
+    toast(aiErrorMessage(err), 'error');
+}
+
+// Open the upgrade view. Reachable from the account menu and from the AI
+// "free limit reached" nudge. Doesn't block — the user can navigate back
+// to their board at any time.
+function openUpgrade() {
+    model.paywallCurrency = model.paywallCurrency
+        || localStorage.getItem('mb_currency')
+        || ((navigator.language || '').toLowerCase().startsWith('n') ? 'NOK' : 'EUR');
+    model.accountMenuOpen = false;
+    changePage('paywall');
+}
+
+function closeUpgrade() {
+    model.page = 'home';
+    updateView();
 }
 
 async function aiDefineKeyword(id, listIndex) {
@@ -934,7 +931,7 @@ async function aiDefineKeyword(id, listIndex) {
         model.editingIndex.add(listIndex);
         await API.updateItem(id, { extra: def });
     } catch (err) {
-        toast(aiErrorMessage(err), 'error');
+        aiErrorToast(err);
     } finally {
         model.aiLoading.delete(id);
         rerenderPanel('Nøkkelord');
@@ -954,7 +951,7 @@ async function aiAnswerQuestion(id) {
         model.expandedQuestion = id;
         await API.updateItem(id, { extra: ans });
     } catch (err) {
-        toast(aiErrorMessage(err), 'error');
+        aiErrorToast(err);
     } finally {
         model.aiLoading.delete(id);
         rerenderPanel('questions');
@@ -985,7 +982,7 @@ async function aiSuggestMealIngredients(mealId) {
         meal.extra = JSON.stringify(data);
         await API.updateItem(mealId, { extra: meal.extra });
     } catch (err) {
-        toast(err.message, 'error');
+        aiErrorToast(err);
     } finally {
         model.aiLoading.delete(mealId);
         updateView();
@@ -1015,7 +1012,7 @@ async function aiGenerateMealInstructions(mealId) {
         model.mealInstrEditing.delete(mealId);
         await API.updateItem(mealId, { extra: meal.extra });
     } catch (err) {
-        toast(err.message, 'error');
+        aiErrorToast(err);
     } finally {
         model.aiLoading.delete(mealId);
         updateView();

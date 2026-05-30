@@ -2740,6 +2740,32 @@ ul {
 .account-menu-item--danger:hover {
     background: rgba(184, 94, 94, 0.08);
 }
+/* Upgrade CTA inside the account menu — visually distinct so free-tier
+   users notice it but still respects the calm aesthetic of the menu. */
+.account-menu-item--cta {
+    background: var(--sage);
+    color: #fff;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+.account-menu-item--cta:hover {
+    background: var(--sage);
+    filter: brightness(1.05);
+}
+
+/* Free-tier note shown above the price card on the upgrade view. */
+.paywall-free-note {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 8px 0 14px;
+    padding: 8px 12px;
+    border-left: 2px solid var(--sage);
+    background: var(--paper);
+    border-radius: 4px;
+}
 
 
 /* ═════════════════════════════════════════════════════════════════════════════

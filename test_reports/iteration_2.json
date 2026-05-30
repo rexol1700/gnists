@@ -1,0 +1,44 @@
+{
+  "summary": "Tested the new free-tier pricing model for MyBoard (Node.js + vanilla JS SPA). Backend: 12/13 pytest tests passing (1 skipped because driving the AI counter to 10 requires a configured anthropic key — verified via code review instead). Frontend: free-tier signup correctly lands on /home (no paywall auto-redirect), paywall view renders the new copy with €0.85 / €5.95 prices and the 'You're on the free plan · 0/10 AI generations used this month' note, the upgrade-close-btn returns the user to /home, aiErrorToast handles code='free_limit_reached' (shows the correct toast text and surfaces the paywall after a short delay), and the account menu shows 'Free plan' + '0 / 10 AI generations used' for the free user. One MAJOR UX issue found: account-upgrade-btn is hidden for free users in dev because the conditional requires billing.enabled=true.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "/api/ai (free-tier counter increment)", "issue": "Because anthropic is unconfigured in dev, /api/ai returns 503 BEFORE freeGenRecord() runs (server/index.js:798 vs :845). Counter can never be driven up via the API in dev, so the live 402 free_limit_reached path is untestable end-to-end without either (a) configuring anthropic or (b) a temporary admin endpoint that bumps ai_gen_count. Verified by code review (server/index.js:786-795) that the 402 path is correct and returns { code:'free_limit_reached', used, limit, resetAt }."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "homeView._renderAccountMenu", "issue": "MAJOR: data-testid='account-upgrade-btn' is HIDDEN for free users in this dev environment because the conditional is `const showUpgrade = billing.enabled && !isPaidTier && !isGrandfathered` (homeView.js:517). When Stripe is unconfigured (billing.enabled=false), free users see only 'Free plan / 0 / 10 AI generations used / Sign out' — no Upgrade CTA in the menu. The review explicitly lists account-upgrade-btn as a required testid for free users. Should drop the billing.enabled gate (or keep the button visible and have it open the upgrade view, which itself already handles the unconfigured case).", "selector": "[data-testid=\"account-upgrade-btn\"]", "priority": "HIGH"},
+      {"component": "paywallView", "issue": "When openUpgrade() is called before model.billing is populated (e.g. immediately after a fresh registration via API helper before refreshBilling resolves), the price card renders '€NaN for the first 30 days / then €NaN / month'. Cause: lines 26-35 fall back to `prices = { NOK:{}, EUR:{} }`, so p.setupAmount and p.monthlyAmount are undefined and Number(undefined)=NaN. Should either (a) have openUpgrade() await refreshBilling() before changePage('paywall'), or (b) defend in _fmtPrice when amount is missing.", "selector": ".paywall-price", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Paywall (upgrade view)", "issues": ["paywall-switch-currency link is not rendered in dev because the conditional `otherAvailable` requires Stripe to have configured price IDs for the alternate currency. In dev neither currency is available, so the testid never appears. Will work in prod once Stripe is configured — not a bug, just call-out for the testing checklist."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_pricing_freetier.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "FIX (high): In public/views/homeView.js line 517 — drop the `billing.enabled &&` guard on showUpgrade so free users always see the Upgrade CTA in the account menu (or replace it with `!isPaidTier && !isGrandfathered` only). The upgrade view itself already gracefully handles the unconfigured-Stripe case via the 503 on /api/billing/checkout, so showing the button is safe.",
+    "FIX (medium): Make openUpgrade() in public/controller.js await refreshBilling() before changePage('paywall'), OR guard _fmtPrice() in paywallView.js to render '—' instead of 'NaN' when amount is undefined. Repro: log out, open the upgrade view via openUpgrade() before billing is fetched → price card shows €NaN.",
+    "OPTIONAL: Add a brief defensive 'Loading…' price card in paywallView when billing.prices is empty, to avoid the NaN flash on slow networks."
+  ],
+  "critical_code_review_comments": [
+    "server/index.js:798 vs :845 ordering — the anthropic 503 returns BEFORE freeGenRecord() runs, so in dev environments without anthropic the counter never increments. That's intended (no generation = no charge), but it does mean the 402 free_limit_reached code path is untestable without either a configured Anthropic key or a test-only DB-bump endpoint. Consider adding a dev-only POST /api/_test/set-ai-count guarded by NODE_ENV !== 'production' to make E2E testing of the limit reached state easier in CI.",
+    "public/views/paywallView.js:35 — `const p = prices[safeCur] || {};` is the right defensive fallback at the dict level, but p.setupAmount / p.monthlyAmount can still be undefined when billing is empty. _fmtPrice should guard: `if (!Number.isFinite(n)) return '—';`.",
+    "public/views/homeView.js:517 — coupling the Upgrade CTA visibility to billing.enabled is too aggressive; it hides the only path-to-paywall from the account menu in any environment where Stripe isn't yet wired (staging, demos, local dev). Decouple the CTA visibility from billing.enabled — the button can still open the (non-blocking) upgrade view even when checkout itself would 503.",
+    "server/index.js has reached 867 lines and mixes auth, billing, AI, and data routes in one file. >700-line threshold breached — consider splitting into server/routes/{auth,billing,ai,data}.js modules."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_pricing_freetier.py (new)"
+  ],
+  "success_rate": {"backend": "100% (12/12 executed tests; 1 skipped due to env limitation)", "frontend": "85% (10/12 spec items verified, account-upgrade-btn hidden in dev, paywall-switch-currency untestable in dev)"},
+  "test_credentials": "pricetest1 / testpw (verified working). /app/memory/test_credentials.md lists testuser1/pass1234 but that user no longer exists in the current DB (login returns 401) — main agent may want to refresh that doc.",
+  "seed_data_creation": "Backend tests register fresh users with TEST_pt_<timestamp> prefix on each run (free tier, never used trial). They are not cleaned up — sql.js DB will accumulate them over time. Not critical for now.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Main blocker is the account-upgrade-btn visibility regression (homeView.js:517). Once the main agent removes the `billing.enabled &&` guard on showUpgrade, re-run the existing pytest suite (it should still 100% pass — the change is frontend-only) and re-open the account menu via the username pill (button.pill) and confirm `[data-testid=\"account-upgrade-btn\"]` is now present. The aiErrorToast → paywall navigation already works correctly. paywall-switch-currency cannot be tested in dev — defer to staging once Stripe price IDs are wired. To test free_limit_reached live, either configure ANTHROPIC_API_KEY in /app/backend/.env or add a dev-only setAiCount endpoint.",
+  "rca of the issue": "account-upgrade-btn missing: the conditional `const showUpgrade = billing.enabled && !isPaidTier && !isGrandfathered` at public/views/homeView.js:517 short-circuits to false whenever billing.enabled is false. billing.enabled comes from billingConfigured() on the server (server/index.js:45-50) which returns false unless at least one fully wired Stripe currency exists. In the dev container ANTHROPIC_API_KEY and STRIPE_*_TEST env vars are intentionally unset, so the testid disappears. The fix is to remove the billing.enabled prerequisite — the upgrade view is now non-blocking and the upgrade button can navigate to it whether or not Stripe checkout is wired."
+}

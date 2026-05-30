@@ -52,12 +52,19 @@ function billingConfigured() {
 console.log(`Stripe: ${STRIPE_ENABLED ? `enabled (${STRIPE_MODE} mode, ${billingConfigured() ? 'configured' : 'NOT FULLY CONFIGURED — paywall disabled'})` : 'disabled'}`);
 
 // ── AI COST GUARDRAIL ────────────────────────────────────────────────────────
-// Soft monthly cap per user, in EUR. When tripped the /api/ai endpoint returns
-// 429 with code 'ai_budget_exceeded'; the rest of the app keeps working.
-// Tune via AI_BUDGET_EUR_PER_MONTH env var. The pricing constants below are
-// Anthropic Haiku 4.5 list prices in USD/M tokens, converted to EUR with a
-// fixed FX rate (USD→EUR ~0.92, biased slightly upward for safety).
-const AI_BUDGET_EUR_PER_MONTH = parseFloat(process.env.AI_BUDGET_EUR_PER_MONTH || '4');
+// Two-tier model:
+//   • Paid users (trialing, active, past_due-in-grace, grandfathered) get a
+//     generous soft monthly EUR budget. When tripped, /api/ai returns 429 with
+//     code 'ai_budget_exceeded'; the rest of the app keeps working.
+//   • Free users get a hard cap of FREE_AI_GENERATIONS_PER_MONTH AI calls per
+//     rolling 30-day window. When exceeded, /api/ai returns 402 with code
+//     'free_limit_reached'; the rest of the app keeps working.
+// Tune the paid budget via AI_BUDGET_EUR_PER_MONTH env var. The pricing
+// constants below are Anthropic Haiku 4.5 list prices in USD/M tokens,
+// converted to EUR with a fixed FX rate (USD→EUR ~0.92, biased slightly
+// upward for safety).
+const AI_BUDGET_EUR_PER_MONTH       = parseFloat(process.env.AI_BUDGET_EUR_PER_MONTH || '4');
+const FREE_AI_GENERATIONS_PER_MONTH = parseInt(process.env.FREE_AI_GENERATIONS_PER_MONTH || '10', 10);
 const HAIKU_INPUT_EUR_PER_TOKEN  = 1.00 * 0.92 / 1_000_000;  // ~€0.00000092
 const HAIKU_OUTPUT_EUR_PER_TOKEN = 5.00 * 0.92 / 1_000_000;  // ~€0.0000046
 const AI_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
@@ -97,6 +104,52 @@ function aiBudgetState(userId) {
 function aiRecordUsage(userId, inTokens, outTokens) {
     run('UPDATE users SET ai_tokens_in = ai_tokens_in + ?, ai_tokens_out = ai_tokens_out + ? WHERE id = ?',
         [inTokens || 0, outTokens || 0, userId]);
+}
+
+// Free-tier generation counter — independent of the paid EUR budget. Counts
+// raw AI calls per rolling 30-day window. Returns
+// { used, limit, remaining, resetAtMs } and resets the window if expired.
+function freeGenState(userId) {
+    const user = getUserById(userId);
+    if (!user) return { used: 0, limit: FREE_AI_GENERATIONS_PER_MONTH, remaining: FREE_AI_GENERATIONS_PER_MONTH, resetAtMs: Date.now() + AI_PERIOD_MS };
+
+    const now = Date.now();
+    let periodStart = user.ai_gen_period_start || 0;
+    let used        = user.ai_gen_count || 0;
+
+    if (!periodStart || now > periodStart + AI_PERIOD_MS) {
+        // Lazily start the window on first read after expiry. We DON'T start
+        // it on signup — only when the user actually makes an AI call. This
+        // matches the "30 days from first generation" UX promise.
+        if (periodStart) {
+            // Expired window — reset
+            periodStart = 0;
+            used = 0;
+            run('UPDATE users SET ai_gen_period_start = 0, ai_gen_count = 0 WHERE id = ?', [userId]);
+        }
+    }
+
+    const resetAtMs = periodStart ? periodStart + AI_PERIOD_MS : 0; // 0 = not started yet
+    return {
+        used,
+        limit: FREE_AI_GENERATIONS_PER_MONTH,
+        remaining: Math.max(0, FREE_AI_GENERATIONS_PER_MONTH - used),
+        resetAtMs,
+    };
+}
+
+// Charge one free-tier generation. Starts the 30-day window on the first
+// call. Idempotent w.r.t. window expiry — caller should freeGenState() first.
+function freeGenRecord(userId) {
+    const user = getUserById(userId);
+    if (!user) return;
+    const now = Date.now();
+    const periodStart = user.ai_gen_period_start || 0;
+    if (!periodStart) {
+        run('UPDATE users SET ai_gen_period_start = ?, ai_gen_count = 1 WHERE id = ?', [now, userId]);
+    } else {
+        run('UPDATE users SET ai_gen_count = ai_gen_count + 1 WHERE id = ?', [userId]);
+    }
 }
 
 // New canonical DB path. If a legacy gnists.db exists in the same dir, use that
@@ -157,6 +210,14 @@ async function initDB() {
     addCol('ai_tokens_in',                    'INTEGER DEFAULT 0');
     addCol('ai_tokens_out',                   'INTEGER DEFAULT 0');
     addCol('ai_period_start',                 'INTEGER DEFAULT 0');
+    // Free-tier generation counter (rolling 30-day window). Independent of
+    // the EUR token budget above — that one bounds paid users, this one
+    // bounds free users at FREE_AI_GENERATIONS_PER_MONTH calls.
+    addCol('ai_gen_count',                    'INTEGER DEFAULT 0');
+    addCol('ai_gen_period_start',             'INTEGER DEFAULT 0');
+    // Sticky flag: once a user has redeemed the 30-day intro trial, they
+    // can't redeem it again. New checkouts from this user skip the trial.
+    addCol('has_used_trial',                  'INTEGER DEFAULT 0');
 
     // ONE-TIME grandfather: only on the first boot where subscription_status
     // didn't exist yet. Anyone who already had an account at that moment is
@@ -281,25 +342,21 @@ function getUserById(id) {
     return rows[0] || null;
 }
 
-// True if the user has an active paid (or grandfathered) plan.
+// True if the user has a paid (or grandfathered) plan — i.e. unmetered AI.
 // Trial counts: during the 30-day trial Stripe sets status='trialing' and we
 // honour it. After cancellation but before period_end, Stripe sets
 // status='active' with cancel_at_period_end=true — still active.
-function hasAccess(user) {
+// past_due gets a short grace via period_end check — payment retry happens
+// before the period ends, and when it lapses Stripe transitions to canceled,
+// at which point isPaid() returns false and the user falls back to free tier
+// (they keep all their data; only AI is now metered).
+function isPaid(user) {
     if (!user) return false;
-    if (!billingConfigured()) return true; // Paywall not wired → app stays open (dev/local)
     const s = user.subscription_status;
     if (s === 'grandfathered') return true;
     if (s === 'trialing' || s === 'active') return true;
-    // past_due gets a short grace via period_end check
     if (s === 'past_due' && user.subscription_current_period_end > Math.floor(Date.now() / 1000)) return true;
     return false;
-}
-
-function requireActiveSubscription(req, res, next) {
-    const user = getUserById(req.user.id);
-    if (hasAccess(user)) { req._userRow = user; return next(); }
-    res.status(402).json({ error: 'Subscription required', code: 'subscription_required' });
 }
 
 // Returns current billing state for the logged-in user, plus the public price
@@ -313,12 +370,27 @@ app.get('/api/billing/status', auth, async (req, res) => {
     await resyncFromStripeIfStuck(user);
     user = getUserById(req.user.id);
 
-    const access = hasAccess(user);
+    const access = isPaid(user);
+    const tier = access ? 'paid' : 'free';
+    const free = freeGenState(user.id);
+    const canTrial = !user.has_used_trial;
     res.json({
         enabled: billingConfigured(),
         mode: STRIPE_MODE,
         status: user.subscription_status || 'none',
-        hasAccess: access,
+        // hasAccess used to mean "can use the app at all". Now everyone can
+        // use the app — kept here for backwards compat with older clients
+        // (always true; clients should use `tier === 'paid'` instead).
+        hasAccess: true,
+        tier,
+        isPaid: access,
+        canTrial,
+        freeGenerations: {
+            used: free.used,
+            limit: free.limit,
+            remaining: free.remaining,
+            resetAtMs: free.resetAtMs,
+        },
         currentPeriodEnd: user.subscription_current_period_end || 0,
         prices: {
             NOK: {
@@ -342,7 +414,7 @@ app.post('/api/billing/checkout', auth, async (req, res) => {
 
     const user = getUserById(req.user.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
-    if (hasAccess(user)) return res.status(400).json({ error: 'You already have access' });
+    if (isPaid(user)) return res.status(400).json({ error: 'You already have access' });
 
     const currency = (req.body?.currency || 'NOK').toUpperCase();
     const priceSet = PRICES[currency];
@@ -363,17 +435,29 @@ app.post('/api/billing/checkout', auth, async (req, res) => {
             run('UPDATE users SET stripe_customer_id = ? WHERE id = ?', [customerId, user.id]);
         }
 
+        // The 30-day intro trial + setup-price combo is once-per-user. If
+        // the user has redeemed it before (canceled, came back), Checkout
+        // skips both the trial and the one-time setup price, billing the
+        // normal monthly price immediately. has_used_trial flips to 1 the
+        // first time we see a trialing/active subscription for this user.
+        const offerTrial = !user.has_used_trial;
+        const line_items = offerTrial
+            ? [
+                { price: priceSet.monthly, quantity: 1 },  // recurring, billed after trial
+                { price: priceSet.setup,   quantity: 1 },  // one-time, billed today
+              ]
+            : [
+                { price: priceSet.monthly, quantity: 1 },  // recurring, billed today
+              ];
+        const subscription_data = offerTrial
+            ? { trial_period_days: 30, metadata: { user_id: String(user.id) } }
+            : { metadata: { user_id: String(user.id) } };
+
         const session = await stripe.checkout.sessions.create({
             mode: 'subscription',
             customer: customerId,
-            line_items: [
-                { price: priceSet.monthly, quantity: 1 },  // recurring, billed after trial
-                { price: priceSet.setup,   quantity: 1 },  // one-time, billed today
-            ],
-            subscription_data: {
-                trial_period_days: 30,
-                metadata: { user_id: String(user.id) },
-            },
+            line_items,
+            subscription_data,
             metadata: { user_id: String(user.id) },
             allow_promotion_codes: true,
             success_url: `${APP_URL}/?billing=success&session_id={CHECKOUT_SESSION_ID}`,
@@ -490,13 +574,19 @@ function subscriptionPeriodEnd(subscription) {
 
 function applySubscriptionToUser(userId, subscription, customerId) {
     // Map Stripe's status onto our column. 'canceled' or 'incomplete_expired'
-    // means access is over now. Otherwise mirror what Stripe says.
+    // means the user falls back to the free tier. Otherwise mirror Stripe.
     let status = subscription.status; // trialing | active | past_due | canceled | unpaid | incomplete | incomplete_expired
     if (status === 'incomplete_expired' || status === 'unpaid') status = 'canceled';
 
+    // Sticky once-per-user trial flag. The first time we ever see this user
+    // in trialing/active (i.e. they actually started a paid plan), record it
+    // so a future re-subscribe skips the 30-day trial + setup price.
+    const isPaying = status === 'trialing' || status === 'active' || status === 'past_due';
+    const trialFlagSet = isPaying ? 1 : 0;
+
     const periodEnd = subscriptionPeriodEnd(subscription);
-    run(`UPDATE users SET subscription_status = ?, stripe_subscription_id = ?, stripe_customer_id = COALESCE(stripe_customer_id, ?), subscription_current_period_end = ? WHERE id = ?`,
-        [status, subscription.id, customerId || null, periodEnd, userId]);
+    run(`UPDATE users SET subscription_status = ?, stripe_subscription_id = ?, stripe_customer_id = COALESCE(stripe_customer_id, ?), subscription_current_period_end = ?, has_used_trial = MAX(has_used_trial, ?) WHERE id = ?`,
+        [status, subscription.id, customerId || null, periodEnd, trialFlagSet, userId]);
     console.log(`Stripe: applied sub ${subscription.id} status=${status} period_end=${periodEnd} to user ${userId}`);
 }
 
@@ -534,7 +624,7 @@ async function resyncFromStripeIfStuck(user) {
 // ── DATA ROUTES ───────────────────────────────────────────────────────────────
 
 // Get all data for logged-in user
-app.get('/api/data', auth, requireActiveSubscription, (req, res) => {
+app.get('/api/data', auth, (req, res) => {
     const userId = req.user.id;
 
     const simpleItems = query(
@@ -569,7 +659,7 @@ app.get('/api/data', auth, requireActiveSubscription, (req, res) => {
 });
 
 // Add item to a list
-app.post('/api/data/:listName', auth, requireActiveSubscription, (req, res) => {
+app.post('/api/data/:listName', auth, (req, res) => {
     const { listName } = req.params;
     const { content, extra = '' } = req.body;
     if (!content?.trim()) return res.status(400).json({ error: 'Empty content' });
@@ -585,7 +675,7 @@ app.post('/api/data/:listName', auth, requireActiveSubscription, (req, res) => {
 });
 
 // Update item (for keyword meaning, task checked state)
-app.patch('/api/data/item/:id', auth, requireActiveSubscription, (req, res) => {
+app.patch('/api/data/item/:id', auth, (req, res) => {
     const id = parseInt(req.params.id, 10);
     const { extra, content, ischecked } = req.body;
 
@@ -600,7 +690,7 @@ app.patch('/api/data/item/:id', auth, requireActiveSubscription, (req, res) => {
 });
 
 // Delete item
-app.delete('/api/data/item/:id', auth, requireActiveSubscription, (req, res) => {
+app.delete('/api/data/item/:id', auth, (req, res) => {
     const id = parseInt(req.params.id, 10);
     const item = query('SELECT id FROM items WHERE id = ? AND user_id = ?', [id, req.user.id]);
     if (!item.length) return res.status(403).json({ error: 'Not allowed' });
@@ -610,7 +700,7 @@ app.delete('/api/data/item/:id', auth, requireActiveSubscription, (req, res) => 
 });
 
 // Reset entire list
-app.delete('/api/data/:listName', auth, requireActiveSubscription, (req, res) => {
+app.delete('/api/data/:listName', auth, (req, res) => {
     const { listName } = req.params;
     const items = query('SELECT id FROM items WHERE user_id = ? AND list_name = ?', [req.user.id, listName]);
     for (const item of items) {
@@ -621,7 +711,7 @@ app.delete('/api/data/:listName', auth, requireActiveSubscription, (req, res) =>
 });
 
 // Add task
-app.post('/api/tasks', auth, requireActiveSubscription, (req, res) => {
+app.post('/api/tasks', auth, (req, res) => {
     const { content } = req.body;
     if (!content?.trim()) return res.status(400).json({ error: 'Empty content' });
     const count = query('SELECT COUNT(*) as c FROM items WHERE user_id = ? AND list_name = ?', [req.user.id, 'tasks']);
@@ -633,7 +723,7 @@ app.post('/api/tasks', auth, requireActiveSubscription, (req, res) => {
 });
 
 // Add subtask
-app.post('/api/tasks/:taskId/subtasks', auth, requireActiveSubscription, (req, res) => {
+app.post('/api/tasks/:taskId/subtasks', auth, (req, res) => {
     const taskId = parseInt(req.params.taskId, 10);
     const { content } = req.body;
     const task = query('SELECT id FROM items WHERE id = ? AND user_id = ? AND list_name = ?', [taskId, req.user.id, 'tasks']);
@@ -643,14 +733,14 @@ app.post('/api/tasks/:taskId/subtasks', auth, requireActiveSubscription, (req, r
 });
 
 // Toggle subtask
-app.patch('/api/subtasks/:id', auth, requireActiveSubscription, (req, res) => {
+app.patch('/api/subtasks/:id', auth, (req, res) => {
     const { ischecked } = req.body;
     run('UPDATE subtasks SET ischecked = ? WHERE id = ?', [ischecked ? 1 : 0, parseInt(req.params.id, 10)]);
     res.json({ ok: true });
 });
 
 // Delete subtask
-app.delete('/api/subtasks/:id', auth, requireActiveSubscription, (req, res) => {
+app.delete('/api/subtasks/:id', auth, (req, res) => {
     run('DELETE FROM subtasks WHERE id = ?', [parseInt(req.params.id, 10)]);
     res.json({ ok: true });
 });
@@ -671,21 +761,41 @@ function aiRateLimit(userId) {
     return entry.count <= max;
 }
 
-app.post('/api/ai', auth, requireActiveSubscription, async (req, res) => {
-    if (!anthropic) return res.status(503).json({ error: 'AI is not configured on this server' });
+app.post('/api/ai', auth, async (req, res) => {
     if (!aiRateLimit(req.user.id)) return res.status(429).json({ error: 'Too many AI requests — try again later' });
 
-    // Soft monthly budget. Returns 429 with a specific code so the client can
-    // show a clear "AI limit reached" message instead of a generic error.
-    const budget = aiBudgetState(req.user.id);
-    if (budget.remainingEur <= 0) {
-        return res.status(429).json({
-            error: 'AI budget for this month is used up',
-            code: 'ai_budget_exceeded',
-            resetAt: budget.resetAtMs,
-            budgetEur: AI_BUDGET_EUR_PER_MONTH,
-        });
+    // Two-tier gate. Paid users hit the EUR cost budget; free users hit the
+    // hard generation count cap. The client distinguishes the two by `code`
+    // so it can show the right message (and the right CTA — "Upgrade" for
+    // free_limit_reached, "Come back next month" for ai_budget_exceeded).
+    // Gate runs BEFORE the anthropic-availability check so the user sees a
+    // useful free-tier nudge even on misconfigured deployments.
+    const userRow = getUserById(req.user.id);
+    const userIsPaid = isPaid(userRow);
+    if (userIsPaid) {
+        const budget = aiBudgetState(req.user.id);
+        if (budget.remainingEur <= 0) {
+            return res.status(429).json({
+                error: 'AI budget for this month is used up',
+                code: 'ai_budget_exceeded',
+                resetAt: budget.resetAtMs,
+                budgetEur: AI_BUDGET_EUR_PER_MONTH,
+            });
+        }
+    } else {
+        const free = freeGenState(req.user.id);
+        if (free.remaining <= 0) {
+            return res.status(402).json({
+                error: `Free plan limit reached (${free.used}/${free.limit} AI generations this month)`,
+                code: 'free_limit_reached',
+                used: free.used,
+                limit: free.limit,
+                resetAt: free.resetAtMs,
+            });
+        }
     }
+
+    if (!anthropic) return res.status(503).json({ error: 'AI is not configured on this server' });
 
     const { kind, text, lang } = req.body;
     if (typeof text !== 'string' || !text.trim()) return res.status(400).json({ error: 'Empty input' });
@@ -728,6 +838,11 @@ app.post('/api/ai', auth, requireActiveSubscription, async (req, res) => {
         const inTok  = (usage.input_tokens  || 0) + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0);
         const outTok = usage.output_tokens || 0;
         aiRecordUsage(req.user.id, inTok, outTok);
+        // Free-tier users also burn one of their 10 monthly generations.
+        // Paid users only pay against the EUR budget; their gen counter
+        // is left alone so it doesn't matter if they ever drop to free
+        // later — they'd start with a fresh quota.
+        if (!userIsPaid) freeGenRecord(req.user.id);
 
         const out = (response.content || [])
             .filter(b => b.type === 'text')
