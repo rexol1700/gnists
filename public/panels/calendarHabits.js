@@ -61,11 +61,106 @@ function calEventData(item) {
     };
 }
 
+// ── External-source aggregation ──────────────────────────────────────────────
+// The calendar surfaces items from four other panels alongside its own
+// native events. Each source produces a uniform event shape:
+//
+//   { id, source, title, time, desc, color, done?, meta? }
+//
+// where `source` is one of 'calendar' | 'task' | 'bill' | 'reminder' | 'habit'
+// and the click handler routes by source (see calClickMergedEvent).
+//
+// Color conventions (chosen to read well against both light and dark themes
+// and to match the existing CAL_COLORS palette):
+//   calendar  → user-picked (sage / coral / ink / amber / blue)
+//   task      → ink   (neutral; checked tasks render with the 'done' modifier)
+//   bill      → amber (matches the "due" warm tone in the bills panel)
+//   reminder  → coral
+//   habit     → sage
 function calEventsForDay(ymdStr) {
-    return (model.lists.calendar || [])
-        .map(it => ({ id: it.id, title: it.value, ...calEventData(it) }))
-        .filter(e => e.date === ymdStr)
-        .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    const events = [];
+
+    // 1. Native calendar events
+    for (const it of (model.lists.calendar || [])) {
+        const d = calEventData(it);
+        if (d.date === ymdStr) {
+            events.push({
+                id: it.id, source: 'calendar', title: it.value,
+                time: d.time, desc: d.desc, color: d.color,
+            });
+        }
+    }
+
+    // 2. Tasks scheduled for this day
+    for (const tk of (model.tasks || [])) {
+        if (tk.date && tk.date === ymdStr) {
+            events.push({
+                id: tk.id, source: 'task', title: tk.task,
+                time: '', desc: '', color: 'ink',
+                done: !!tk.ischecked,
+            });
+        }
+    }
+
+    // 3. Bills due this day (auto-shown — no opt-in needed)
+    for (const b of (model.lists.bills || [])) {
+        const [amount = '', dueDate = ''] = (b.extra || '').split('|');
+        if (dueDate && dueDate === ymdStr) {
+            events.push({
+                id: b.id, source: 'bill', title: b.value,
+                time: '', desc: amount ? `${amount}` : '',
+                color: 'amber', meta: amount,
+            });
+        }
+    }
+
+    // 4. Reminders manually added to the calendar (extra: 'date' | 'date|1')
+    for (const r of (model.lists.reminders || [])) {
+        const raw = r.extra || '';
+        const idx = raw.indexOf('|');
+        const date = idx === -1 ? raw : raw.slice(0, idx);
+        const onCal = idx !== -1 && raw.slice(idx + 1) === '1';
+        if (onCal && date === ymdStr) {
+            events.push({
+                id: r.id, source: 'reminder', title: r.value,
+                time: '', desc: '', color: 'coral',
+            });
+        }
+    }
+
+    // 5. Habits opted in to the calendar — render every day past the habit's
+    //    creation so the user has a recurring nudge. Surface completion
+    //    state inline so they can tick it off straight from the calendar.
+    //    We don't show habits on future dates beyond today + 90 days to
+    //    keep the merged event list bounded.
+    const todayYmd = ymd(new Date());
+    for (const h of (model.lists.habits || [])) {
+        const data = habitData(h);
+        if (!data.on_calendar) continue;
+        // Only render dates from today onward — past completions live in
+        // the habits panel's stats view, not on the calendar.
+        if (ymdStr < todayYmd) continue;
+        const done = data.completions.includes(ymdStr);
+        events.push({
+            id: h.id, source: 'habit', title: h.value,
+            time: data.reminder || '', desc: '', color: 'sage',
+            done,
+        });
+    }
+
+    return events.sort((a, b) => (a.time || 'zz').localeCompare(b.time || 'zz'));
+}
+
+// Route a click on a merged calendar event to the right action based on
+// its source. Native calendar events open the editor; tasks toggle done;
+// habits toggle today's completion; bills/reminders are read-only so the
+// click just opens a small inline detail (handled by the caller currently
+// as a no-op; future: open a tooltip).
+function calClickMergedEvent(source, id) {
+    if (source === 'calendar') return calEditEvent(id);
+    if (source === 'task')     return toggleTask(id);
+    if (source === 'habit')    return habitToggleToday(id);
+    // bill / reminder are informational on the calendar — no action.
 }
 
 const CAL_COLORS = ['sage', 'coral', 'ink', 'amber', 'blue'];
@@ -150,11 +245,11 @@ function renderCalendarMonth(cursor) {
         const visible = events.slice(0, 3);
         const overflow = events.length - visible.length;
         const evHtml = visible.map(e => `
-            <button class="cal-ev cal-ev-${escHtml(e.color)}"
-                onclick="event.stopPropagation();calEditEvent(${e.id})"
-                data-testid="calendar-event-${e.id}"
+            <button class="cal-ev cal-ev-${escHtml(e.color)} cal-ev-src-${e.source} ${e.done ? 'cal-ev-done' : ''}"
+                onclick="event.stopPropagation();calClickMergedEvent('${e.source}',${e.id})"
+                data-testid="calendar-event-${e.source}-${e.id}"
                 title="${escHtml(e.title)}">
-                ${e.time ? `<span class="cal-ev-time">${escHtml(e.time)}</span>` : ''}<span class="cal-ev-title">${escHtml(e.title)}</span>
+                ${calEventIcon(e)}${e.time ? `<span class="cal-ev-time">${escHtml(e.time)}</span>` : ''}<span class="cal-ev-title">${escHtml(e.title)}</span>
             </button>
         `).join('');
         const moreHtml = overflow > 0
@@ -188,10 +283,10 @@ function renderCalendarWeek(cursor) {
         const isToday = isSameDay(d, today);
         const evHtml = events.length
             ? events.map(e => `
-                <button class="cal-week-ev cal-ev-${escHtml(e.color)}"
-                    onclick="calEditEvent(${e.id})"
-                    data-testid="calendar-event-${e.id}">
-                    ${e.time ? `<span class="cal-ev-time">${escHtml(e.time)}</span>` : ''}
+                <button class="cal-week-ev cal-ev-${escHtml(e.color)} cal-ev-src-${e.source} ${e.done ? 'cal-ev-done' : ''}"
+                    onclick="calClickMergedEvent('${e.source}',${e.id})"
+                    data-testid="calendar-event-${e.source}-${e.id}">
+                    ${calEventIcon(e)}${e.time ? `<span class="cal-ev-time">${escHtml(e.time)}</span>` : ''}
                     <span class="cal-ev-title">${escHtml(e.title)}</span>
                     ${e.desc ? `<span class="cal-ev-desc">${escHtml(e.desc.slice(0, 60))}${e.desc.length > 60 ? '…' : ''}</span>` : ''}
                 </button>

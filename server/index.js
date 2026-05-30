@@ -637,13 +637,26 @@ app.get('/api/data', auth, (req, res) => {
         [userId]
     );
 
-    // Attach subtasks
+    // Attach subtasks. Tasks store their state in `extra` using a small
+    // pipe-separated format so a scheduled date can ride along with the
+    // checkbox state without a schema change:
+    //   ''        → unchecked, no date          (legacy)
+    //   '0'       → unchecked, no date          (legacy)
+    //   '1'       → checked, no date            (legacy)
+    //   '0|2026-02-15' → unchecked, scheduled on that day
+    //   '1|2026-02-15' → checked,   scheduled on that day
+    // Older rows without a pipe still parse correctly.
     const tasks = taskItems.map(t => {
         const subs = query('SELECT id, content, ischecked FROM subtasks WHERE task_id = ? ORDER BY id ASC', [t.id]);
+        const extra = t.extra || '';
+        const idx = extra.indexOf('|');
+        const flag = idx === -1 ? extra : extra.slice(0, idx);
+        const date = idx === -1 ? '' : extra.slice(idx + 1);
         return {
             id: t.id,
             task: t.content,
-            ischecked: t.extra === '1',
+            ischecked: flag === '1',
+            date,
             subtasks: subs.map(s => ({ id: s.id, task: s.content, ischecked: s.ischecked === 1 }))
         };
     });
@@ -674,17 +687,26 @@ app.post('/api/data/:listName', auth, (req, res) => {
     res.json({ id });
 });
 
-// Update item (for keyword meaning, task checked state)
+// Update item (for keyword meaning, task checked state, scheduled date, etc.)
 app.patch('/api/data/item/:id', auth, (req, res) => {
     const id = parseInt(req.params.id, 10);
     const { extra, content, ischecked } = req.body;
 
-    const item = query('SELECT id FROM items WHERE id = ? AND user_id = ?', [id, req.user.id]);
-    if (!item.length) return res.status(403).json({ error: 'Not allowed' });
+    const rows = query('SELECT id, extra FROM items WHERE id = ? AND user_id = ?', [id, req.user.id]);
+    if (!rows.length) return res.status(403).json({ error: 'Not allowed' });
 
     if (extra !== undefined) run('UPDATE items SET extra = ? WHERE id = ?', [extra, id]);
     if (content !== undefined) run('UPDATE items SET content = ? WHERE id = ?', [content.trim(), id]);
-    if (ischecked !== undefined) run('UPDATE items SET extra = ? WHERE id = ?', [ischecked ? '1' : '0', id]);
+    // Toggling the checkbox shouldn't blow away the task's scheduled date.
+    // Preserve everything to the right of the first '|' (the task `date`
+    // payload) and rewrite only the first segment.
+    if (ischecked !== undefined) {
+        const cur = rows[0].extra || '';
+        const idx = cur.indexOf('|');
+        const rest = idx === -1 ? '' : cur.slice(idx); // includes the leading '|'
+        const next = `${ischecked ? '1' : '0'}${rest}`;
+        run('UPDATE items SET extra = ? WHERE id = ?', [next, id]);
+    }
 
     res.json({ ok: true });
 });

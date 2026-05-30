@@ -301,7 +301,7 @@ async function flushPendingSpark() {
         if (!spark || !target) return;
         if (target === 'tasks') {
             const r = await API.addTask(spark);
-            model.tasks.push({ id: r.id, task: spark, ischecked: false, subtasks: [] });
+            model.tasks.push({ id: r.id, task: spark, ischecked: false, date: '', subtasks: [] });
         } else {
             const r = await API.addItem(target, spark);
             if (!model.lists[target]) model.lists[target] = [];
@@ -431,7 +431,7 @@ async function addTask(inputEl) {
     inputEl.value = '';
     try {
         const res = await API.addTask(value);
-        model.tasks.push({ id: res.id, task: value, ischecked: false, subtasks: [] });
+        model.tasks.push({ id: res.id, task: value, ischecked: false, date: '', subtasks: [] });
         rerenderPanel('tasks');
         rerenderSubbarCount();
     } catch (err) {
@@ -467,6 +467,58 @@ async function removeTask(id) {
     } catch (err) {
         toast(err.message, 'error');
     }
+}
+
+// Persist the task's full extra payload (ischecked + scheduled date).
+// Used by scheduleTask / unscheduleTask so a schedule operation doesn't
+// accidentally undo a checkbox tick, and vice versa.
+function _taskExtra(task) {
+    const flag = task.ischecked ? '1' : '0';
+    return task.date ? `${flag}|${task.date}` : flag;
+}
+
+// Schedule a task to appear on the calendar on a given YYYY-MM-DD.
+// dateStr === '' removes the schedule (un-schedule).
+async function scheduleTask(id, dateStr) {
+    const task = model.tasks.find(t => t.id === id);
+    if (!task) return;
+    const prev = task.date;
+    task.date = dateStr || '';
+    // Re-render both the tasks panel (date pill) and the calendar (event).
+    rerenderPanel('tasks');
+    if (panelExists('calendar')) rerenderPanel('calendar');
+    try {
+        await API.updateItem(id, { extra: _taskExtra(task) });
+        if (dateStr) toast(t('task_scheduled'));
+        else toast(t('task_unscheduled'));
+    } catch (err) {
+        task.date = prev;
+        rerenderPanel('tasks');
+        if (panelExists('calendar')) rerenderPanel('calendar');
+        toast(err.message, 'error');
+    }
+}
+
+// Open the inline date picker UI for a task. Sets a flag on the model so
+// the renderer shows an <input type=date> instead of the schedule pill.
+function openScheduleTask(id) {
+    model.schedulingTaskId = id;
+    rerenderPanel('tasks');
+    requestAnimationFrame(() => {
+        const el = document.getElementById(`task-schedule-input-${id}`);
+        if (el) { el.focus(); if (typeof el.showPicker === 'function') { try { el.showPicker(); } catch (e) {} } }
+    });
+}
+
+function closeScheduleTask() {
+    model.schedulingTaskId = null;
+    rerenderPanel('tasks');
+}
+
+// Lightweight helper to avoid blowing up if the calendar panel isn't laid
+// out on the user's board. rerenderPanel is a no-op for unknown IDs.
+function panelExists(id) {
+    return (model.tileLayout || []).some(t => (t.id || t) === id);
 }
 
 async function addSubtask(taskId, inputEl) {
@@ -580,6 +632,16 @@ function removeBill(id) {
 }
 
 // ── REMINDERS ─────────────────────────────────────────────────────────────────
+// Reminder `extra` format: '<YYYY-MM-DD>' or '<YYYY-MM-DD>|1'. The trailing
+// "|1" is the "show on calendar" flag — set by toggleReminderOnCalendar()
+// below. Older reminders without the flag still parse correctly.
+function reminderParts(item) {
+    const raw = item?.extra || '';
+    const idx = raw.indexOf('|');
+    return idx === -1
+        ? { date: raw, onCalendar: false }
+        : { date: raw.slice(0, idx), onCalendar: raw.slice(idx + 1) === '1' };
+}
 
 function addReminder(listId) {
     const textEl = document.getElementById('reminders-text-input');
@@ -596,6 +658,33 @@ function addReminder(listId) {
             rerenderSubbarCount();
         })
         .catch(err => toast(err.message, 'error'));
+}
+
+// Toggle whether a reminder is shown on the calendar. The reminder still
+// lives in its own panel either way — this just adds/removes a calendar
+// surface for it.
+async function toggleReminderOnCalendar(id) {
+    const item = (model.lists.reminders || []).find(r => r.id === id);
+    if (!item) return;
+    const { date, onCalendar } = reminderParts(item);
+    if (!date) {
+        toast(t('reminder_needs_date'), 'error');
+        return;
+    }
+    const next = !onCalendar;
+    const prev = item.extra;
+    item.extra = next ? `${date}|1` : date;
+    rerenderPanel('reminders');
+    if (panelExists('calendar')) rerenderPanel('calendar');
+    try {
+        await API.updateItem(id, { extra: item.extra });
+        toast(next ? t('added_to_calendar') : t('removed_from_calendar'));
+    } catch (err) {
+        item.extra = prev;
+        rerenderPanel('reminders');
+        if (panelExists('calendar')) rerenderPanel('calendar');
+        toast(err.message, 'error');
+    }
 }
 
 // Lang switcher (used in topbar / auth headers)
@@ -1253,9 +1342,35 @@ async function habitToggleDate(id, dateYmd) {
     data.completions = Array.from(set).sort();
     item.extra = JSON.stringify(data);
     rerenderPanel('habits');
+    if (panelExists('calendar')) rerenderPanel('calendar');
     try {
         await API.updateItem(id, { extra: item.extra });
     } catch (err) {
+        toast(err.message, 'error');
+    }
+}
+
+// Toggle whether this habit appears as a daily prompt on the calendar.
+// When on_calendar is true the habit shows up on every day from now until
+// the user turns it off, with the completion state surfaced inline so the
+// user can tick it off straight from the calendar.
+async function toggleHabitOnCalendar(id) {
+    const item = (model.lists.habits || []).find(h => h.id === id);
+    if (!item) return;
+    const data = habitData(item);
+    const next = !data.on_calendar;
+    const prev = item.extra;
+    data.on_calendar = next;
+    item.extra = JSON.stringify(data);
+    rerenderPanel('habits');
+    if (panelExists('calendar')) rerenderPanel('calendar');
+    try {
+        await API.updateItem(id, { extra: item.extra });
+        toast(next ? t('added_to_calendar') : t('removed_from_calendar'));
+    } catch (err) {
+        item.extra = prev;
+        rerenderPanel('habits');
+        if (panelExists('calendar')) rerenderPanel('calendar');
         toast(err.message, 'error');
     }
 }

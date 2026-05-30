@@ -21,7 +21,7 @@ const model = {
         calendar:     [],  // [{ id, value, extra }]  extra = JSON {date, time, description, color}
         habits:       [],  // [{ id, value, extra }]  extra = JSON {category, goal, reminder, completions:[]}
     },
-    tasks: [], // [{ id, task, ischecked, subtasks: [{ id, task, ischecked }] }]
+    tasks: [], // [{ id, task, ischecked, date: 'YYYY-MM-DD' | '', subtasks: [{ id, task, ischecked }] }]
 
     // UI state
     editingIndex: new Set(),
