@@ -904,13 +904,24 @@ function aiErrorToast(err) {
 
 // Open the upgrade view. Reachable from the account menu and from the AI
 // "free limit reached" nudge. Doesn't block — the user can navigate back
-// to their board at any time.
-function openUpgrade() {
+// to their board at any time. Refreshes billing first so the price card
+// doesn't flash '—' on first open.
+async function openUpgrade() {
     model.paywallCurrency = model.paywallCurrency
         || localStorage.getItem('mb_currency')
         || ((navigator.language || '').toLowerCase().startsWith('n') ? 'NOK' : 'EUR');
     model.accountMenuOpen = false;
-    changePage('paywall');
+    if (!model.billing) {
+        // Render immediately so the user sees something, then refresh in the
+        // background and re-render with real prices when they arrive.
+        changePage('paywall');
+        await refreshBilling();
+        updateView();
+    } else {
+        // Fire-and-forget refresh — keeps the counter / canTrial up to date.
+        refreshBilling().then(() => { if (model.page === 'paywall') updateView(); });
+        changePage('paywall');
+    }
 }
 
 function closeUpgrade() {

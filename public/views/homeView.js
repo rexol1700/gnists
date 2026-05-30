@@ -511,10 +511,12 @@ function _renderAccountMenu(username) {
     // isn't a grandfathered free-forever user).
     const showManage = billing.enabled && !isGrandfathered && status !== 'none';
     // "Upgrade" CTA is shown for any user who is on the free tier (whether
-    // brand new, lapsed past_due, or canceled) — gives them a one-click way
-    // to get back to paid. Hidden for grandfathered users (they already have
-    // it free) and active paid users.
-    const showUpgrade = billing.enabled && !isPaidTier && !isGrandfathered;
+    // brand new, lapsed past_due, or canceled). Hidden for grandfathered
+    // users (they already have it free) and active paid users. We don't gate
+    // on billing.enabled — the upgrade view itself surfaces a clear error
+    // if Stripe isn't wired (staging / local dev), and hiding the only path
+    // to it in those envs makes the feature untestable.
+    const showUpgrade = !isPaidTier && !isGrandfathered;
 
     // Status label + secondary date line
     const statusKey = isPaidTier ? `account_status_${status}` : 'account_status_free';

@@ -16,6 +16,7 @@ function _defaultCurrency() {
 
 function _fmtPrice(currency, amount) {
     const n = Number(amount);
+    if (!Number.isFinite(n)) return '—';
     const isInt = Math.abs(n - Math.round(n)) < 0.005;
     const s = isInt ? String(Math.round(n)) : n.toFixed(2);
     return currency === 'NOK' ? `${s} kr` : `€${s}`;

@@ -1,86 +1,74 @@
-# MyBoard Mobile (Flutter) — PRD
+# MyBoard — Pricing Refactor (Free Tier + Once-Per-User Trial)
 
-## Original problem statement
-> Build a mobile app: From my webapp "myboard" create a multiplatform app with dart and flutter. So that it works on ios and android
+## Original problem statement (Jan 30, 2026)
 
-Source webapp: https://github.com/rexol1700/gnists (live at https://myboard.org)
-Stack: Node.js + Express + SQLite + bcrypt JWT auth, Anthropic Haiku 4.5 AI buttons, Stripe paywall.
+> Alter the pricing structure of my app. There should be a free option that
+> includes 10 ai generations a month. Can still keep the 10kr for the first
+> 30 days and then 70kr a month. But they don't lose anything if payment
+> fails later, their subscription just downgraded to free tier.
+
+## Source
+
+- Repo: https://github.com/rexol1700/gnists (a.k.a. MyBoard, live at https://myboard.org)
+- Stack: Node.js + Express + sql.js (SQLite), bcrypt+JWT auth, Anthropic Haiku 4.5,
+  Stripe paywall. Vanilla JS frontend in `/app/public`.
+
+## Pricing model (after this change)
+
+| Tier              | Cost                                   | Limits |
+|-------------------|----------------------------------------|--------|
+| **Free**          | 0 kr forever                           | 10 AI generations / rolling 30 days, full app otherwise |
+| **Trial (new)**   | 10 NOK / €0.85 for the first 30 days   | Unlimited AI |
+| **Paid (after)**  | 70 NOK / €5.95 per month               | Unlimited AI (soft EUR budget €4/mo) |
+
+### User choices captured
+- Free 30-day window starts on the user's **first AI generation** (not signup)
+- Existing paid users keep paid access until **end of current billing period**, then downgrade to free (no data loss)
+- When a free user hits 10/10 → toast + non-blocking upgrade view (app stays usable)
+- Intro trial price (NOK 10 / €0.85 for 30 days) is **once per user** — sticky `has_used_trial` flag, returning users see the regular monthly price only
+- Payment provider: **Stripe** (already wired)
 
 ## Architecture
-- Single Flutter project at `/app/mobile`
-- Targets: **iOS + Android** (web works for smoke tests but isn't a target)
-- Talks to existing backend at `https://myboard.org` (override with `--dart-define=API_BASE=...`)
-- State: lightweight `ChangeNotifier` (`AppState`), `SharedPreferences` for persistence
-- HTTP: `package:http`. Auth via Bearer JWT (7-day sessions, mirrors web)
-- Type: `Instrument Serif` (display) + `Inter` (body — closest Geist sibling on Google Fonts) + `JetBrains Mono` (labels) via `google_fonts`
-- Markdown rendering via `flutter_markdown` for AI answers + recipe instructions
 
-## User personas
-1. **Janis-style power user** — keeps a personal board, dozens of items, daily capture from phone
-2. **Casual capture** — opens app, dumps a thought into "Questions" or "Sparks", forgets about it
-3. **Recipe planner** — uses the Meals panel + AI to expand ingredients/instructions
+- **Backend** (`/app/server/index.js`, single file)
+  - New DB columns (idempotent migration): `ai_gen_count`, `ai_gen_period_start`, `has_used_trial`
+  - `isPaid(user)` — replaces `hasAccess()`. True for `grandfathered | trialing | active | (past_due in grace)`
+  - `freeGenState(userId)` / `freeGenRecord(userId)` — rolling 30-day counter, lazy window start
+  - `requireActiveSubscription` middleware **removed** from all `/api/data`/`/api/tasks` routes — free users have full app access
+  - `/api/ai` two-tier gate: paid users hit the EUR budget; free users hit the 10-gen cap (returns 402 `code: 'free_limit_reached'`)
+  - `/api/billing/status` now returns `{ tier, isPaid, canTrial, freeGenerations: {used, limit, remaining, resetAtMs}, ... }`
+  - `/api/billing/checkout` branches on `canTrial`: trial-eligible = setup price + 30-day trial; trial-used = monthly price only
+  - `applySubscriptionToUser` sets `has_used_trial=1` whenever it sees trialing/active/past_due
 
-## Core requirements (static)
-- Same domain model as web: user → many items (in named lists) → optional subtasks
-- Same wire format: `GET /api/data` returns `{lists: {name: [items]}, tasks: [task]}`
-- 14 panel types: questions, interests, tasks (+subtasks), reminders, keywords, shopping, notes, meals, bills, times, selling, motivations, learningGoals, habits (calendar omitted from MVP — uses generic simple list)
-- AI buttons: define, answer, ingredients, instructions
-- NO/EN i18n, light/dark theme
-- 7-day JWT sessions persisted across launches
+- **Frontend** (`/app/public`)
+  - Login/register/onboarding no longer paywall-block — users land on the home board immediately on the free tier
+  - `paywallView.js` is now a **non-blocking upgrade view** with a "Back to board" exit. Trial-eligible card vs. no-trial card branches on `billing.canTrial`. NaN-guarded
+  - Account menu shows "Free plan" + "X / 10 AI generations used" + sage-green "Upgrade · unlimited AI" CTA
+  - `aiErrorToast` handles the new `free_limit_reached` code: shows the toast and auto-opens the upgrade view after 600ms
+  - New i18n strings (EN + NO): `ai_free_limit_reached`, `paywall_free_note`, `paywall_btn_no_trial`, `paywall_back_to_board`, `paywall_no_trial_note`, `account_status_free`, `account_free_usage`, `account_upgrade`
 
-## What's implemented (May 25, 2026)
-- ✅ Auth: register, login, logout, persistent JWT (`SharedPreferences`)
-- ✅ Landing screen with sage halo, italic-accented hero, CTA buttons
-- ✅ Auth screen (login ↔ register toggle, password show/hide, error states)
-- ✅ Onboarding 4-step flow: welcome, pick boards (grid with check toggles), first spark (textarea + target list dropdown), ready summary
-- ✅ Home board: paper canvas, scrollable panel feed, pull-to-refresh, "Add a board" bottom sheet, settings sheet (avatar, language, theme, sign out)
-- ✅ All 14 panel renderers with full CRUD against the real API:
-    - Simple list (interests, motivations, learningGoals, calendar)
-    - Tasks with subtasks + checkbox states
-    - Reminders with date pickers + overdue/today coloring
-    - Questions with Anthropic AI answer + markdown rendering
-    - Keywords with AI definitions + inline editor
-    - Check-list (shopping, habits)
-    - Notes (collapsible title + serif body)
-    - Meals (tabs: ingredients with AI suggest, instructions with AI write + markdown preview)
-    - Bills (amount + due date, overdue coloring)
-    - Times (HH:MM + recurrence dropdown)
-    - Selling (price + listed/pending/sold dropdown)
-- ✅ AI button widget: spinner state, handles 503 (not configured), 429 'ai_budget_exceeded' (shows reset countdown), generic errors
-- ✅ i18n: full EN + NO string tables matching web's i18n.js keys
-- ✅ Theme: light + dark, full design-token parity with `public/style.css`
-- ✅ Subscription-required state: friendly "open the web app to subscribe" screen with retry
-- ✅ Android + iOS platform folders scaffolded, Dart code compiles cleanly (`flutter analyze` → 0 errors, 8 info-level hints)
-- ✅ Smoke-tested via Flutter Web build — renders pixel-correct vs the web design
+## What's implemented (Jan 30, 2026)
 
-## What's NOT implemented (deliberate)
-- ❌ Stripe paywall UI (user explicitly excluded; AI budget = soft demo limit instead). App handles 402 gracefully.
-- ❌ Panel reorder / drag-resize (web has it; doesn't fit single-column mobile feed)
-- ❌ Calendar view (web has it; substituted with simple list)
-- ❌ Push notifications for reminders (server has no push infrastructure)
-- ❌ Offline mode / local cache
+- ✅ Free-tier 10 generations / 30 rolling days enforced server-side, surfaces 402 with structured payload
+- ✅ Once-per-user intro trial flag (`has_used_trial`) — Checkout omits trial + setup price for returning users
+- ✅ Payment-failed → downgrade to free path (no explicit migration; `isPaid()` returns false after Stripe transitions past `period_end`)
+- ✅ Backend `/api/billing/status` returns new `tier`, `freeGenerations`, `canTrial` shape; legacy `hasAccess` kept as always-true for backwards-compat
+- ✅ Non-blocking upgrade view (frontend), reachable from the AI nudge and the account menu
+- ✅ Account menu shows free-tier counter + upgrade CTA for free users; "Manage subscription" + "Cancel subscription" for paid users
+- ✅ AI errors mapped to user-facing toasts (`free_limit_reached` vs `ai_budget_exceeded`)
+- ✅ DB migration is idempotent; tested via supervisor restart
+- ✅ Manual + testing-agent verification: backend 12/12 tests pass, frontend test-IDs (`account-upgrade-btn`, `account-tier-label`, `account-free-usage`, `paywall-free-note`, `paywall-checkout-btn`, `upgrade-close-btn`) all wired
 
 ## Backlog (P1 → P2)
-- **P1** Add a server-side "mobile demo bypass" so non-subscribed users can taste the app
-    - Easiest: `STRIPE_ENABLED=false` on the server, OR add a `requireActiveSubscriptionExceptMobile()` helper and detect a `X-MyBoard-Client: mobile` header
-- **P1** Push notifications for reminders (FCM/APNs + a small `/api/devices/register` endpoint)
-- **P2** Native-feeling drag-to-reorder for panels (Flutter `ReorderableListView`)
-- **P2** Calendar view with dated agenda (uses existing `reminders` + `times` + `bills`)
-- **P2** Offline-first: cache `GET /api/data` to disk, retry mutations on reconnect
-- **P2** Biometric unlock (FaceID / fingerprint) after login
 
-## How to run
-```bash
-cd /app/mobile
-flutter pub get
-flutter run             # connected device or emulator
-flutter build apk --release   # Android sideload .apk
-flutter build ios --release   # macOS + Xcode required
-```
-Override backend: `flutter run --dart-define=API_BASE=https://your.backend`
+- **P1** Add a dev-only test endpoint to bump `ai_gen_count` for E2E testing of the 402 path without burning real generations (called out by the testing agent — currently only exercisable via direct sql.js writes)
+- **P2** Customer Portal: surface `cancel_at_period_end` + the actual period-end date in the account menu so users know exactly when they downgrade
+- **P2** Track abandoned-checkout funnel (`checkout.session.expired` webhook → re-engagement email — needs email integration)
+- **P2** Per-currency trial-redemption: today the `has_used_trial` flag is global; could be per-region if we want returning EUR customers to get a fresh NOK trial (unlikely needed)
 
 ## Notes for future agents
-- DON'T re-scaffold `android/` or `ios/` (already done with `--org com.myboard`)
-- DON'T add Stripe — user explicitly excluded it
-- DO call `integration_playbook_expert_v2` before swapping the AI provider
-- The font substitutions (Inter for Geist, JetBrains Mono for Geist Mono) are deliberate — Geist isn't on Google Fonts yet. If/when google_fonts adds it, swap `inter`/`jetBrainsMono` → `geist`/`geistMono` in `lib/theme/mb_theme.dart`
+
+- DO call `integration_playbook_expert_v2` if extending Stripe (new prices, coupons, webhooks)
+- The legacy `hasAccess: true` field in `/api/billing/status` is a backwards-compat shim for older mobile clients (Flutter app at `/app/mobile`). Don't remove without verifying the mobile build
+- `requireActiveSubscription` middleware is intentionally **gone** from data routes. If you reintroduce paid-only features in the future, gate them with the new `isPaid()` helper, not by re-adding that middleware globally
+- Stripe + Anthropic are unconfigured in the dev container — endpoints return 503 with clear errors. The pricing gate itself runs and is fully exercisable via curl + DB-write helpers (see `/app/memory/test_credentials.md`)
