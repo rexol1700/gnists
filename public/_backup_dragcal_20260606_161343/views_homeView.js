@@ -251,64 +251,6 @@ function renderBottomDropZone() {
 
 let _tileDragging = null;
 
-// --- Drag a task from the Tasks panel onto a calendar day cell -----------
-// Pairs with renderTaskSchedule() (task rows) + calCell drop handlers
-// (calendarHabits.js) and the scheduleTask() data layer (controller.js).
-let _taskDragging = null;
-
-function taskDragStart(event, taskId) {
-    _taskDragging = taskId;
-    event.dataTransfer.effectAllowed = 'copyMove';
-    // Custom MIME so calendar cells only react to task drags, not panel drags.
-    event.dataTransfer.setData('application/x-gnists-task', String(taskId));
-    event.dataTransfer.setData('text/plain', String(taskId));
-    const item = event.target.closest('.task-item');
-    if (item) item.classList.add('task-dragging');
-    document.body.classList.add('task-drag-active');
-}
-
-function taskDragEnd(event) {
-    _taskDragging = null;
-    const item = event.target.closest('.task-item');
-    if (item) item.classList.remove('task-dragging');
-    document.body.classList.remove('task-drag-active');
-    document.querySelectorAll('.cal-cell.cal-cell-droptarget')
-        .forEach(el => el.classList.remove('cal-cell-droptarget'));
-}
-
-function _isTaskDrag(event) {
-    return _taskDragging != null ||
-        (event.dataTransfer &&
-         Array.from(event.dataTransfer.types || []).includes('application/x-gnists-task'));
-}
-
-function calCellDragOver(event, cellEl) {
-    if (!_isTaskDrag(event)) return; // let panel/other drags pass through
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
-    if (cellEl) cellEl.classList.add('cal-cell-droptarget');
-}
-
-function calCellDragLeave(event, cellEl) {
-    if (cellEl) cellEl.classList.remove('cal-cell-droptarget');
-}
-
-function calCellDrop(event, dayYmd, cellEl) {
-    if (!_isTaskDrag(event)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (cellEl) cellEl.classList.remove('cal-cell-droptarget');
-    const raw = (event.dataTransfer &&
-        event.dataTransfer.getData('application/x-gnists-task')) || _taskDragging;
-    const taskId = parseInt(raw, 10);
-    _taskDragging = null;
-    document.body.classList.remove('task-drag-active');
-    if (!isNaN(taskId) && dayYmd && typeof scheduleTask === 'function') {
-        scheduleTask(taskId, dayYmd);
-    }
-}
-
-
 function tileDragStart(event, id) {
     _tileDragging = id;
     event.dataTransfer.effectAllowed = 'move';

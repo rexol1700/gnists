@@ -258,9 +258,6 @@ function renderCalendarMonth(cursor) {
         cells.push(`
             <div class="cal-cell ${inMonth ? '' : 'cal-cell-out'} ${isToday ? 'cal-cell-today' : ''} ${isSelected ? 'cal-cell-selected' : ''}"
                  onclick="calCellClick('${dayYmd}')"
-                 ondragover="calCellDragOver(event, this)"
-                 ondragleave="calCellDragLeave(event, this)"
-                 ondrop="calCellDrop(event, '${dayYmd}', this)"
                  data-testid="calendar-cell-${dayYmd}">
                 <div class="cal-cell-num">${d.getDate()}</div>
                 <div class="cal-cell-events">${evHtml}${moreHtml}</div>

@@ -84,43 +84,6 @@ function renderKeywordsPanelInput(panel) {
 }
 
 // ── tasks ─────────────────────────────────────────────────────────────────────
-// Renders the schedule affordance for a task row: a date pill when scheduled,
-// an inline <input type=date> when the user is actively picking (driven by
-// model.schedulingTaskId), or a small "schedule" button otherwise.
-function renderTaskSchedule(task) {
-    if (model.schedulingTaskId === task.id) {
-        return /*html*/`
-            <input type="date" class="task-schedule-input" id="task-schedule-input-${task.id}"
-                value="${task.date || ''}"
-                onchange="scheduleTask(${task.id}, this.value); closeScheduleTask();"
-                onblur="closeScheduleTask()"
-                onclick="event.stopPropagation()">
-        `;
-    }
-    if (task.date) {
-        return /*html*/`
-            <button class="task-date-pill" title="${t('task_unschedule')}"
-                onclick="event.stopPropagation(); scheduleTask(${task.id}, '')">
-                ${formatTaskDate(task.date)} <span class="task-date-x">✕</span>
-            </button>
-        `;
-    }
-    return /*html*/`
-        <button class="task-schedule-btn" title="${t('schedule_task')}"
-            onclick="event.stopPropagation(); openScheduleTask(${task.id})">◷</button>
-    `;
-}
-
-// Short, locale-agnostic date label for the task pill, e.g. "6 Jun".
-function formatTaskDate(ymdStr) {
-    const parts = (ymdStr || '').split('-');
-    if (parts.length !== 3) return ymdStr || '';
-    const d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
-    if (isNaN(d)) return ymdStr;
-    const mon = t('mo_' + d.getMonth()) || (d.getMonth() + 1);
-    return `${d.getDate()} ${mon}`;
-}
-
 function renderTasksPanel(panel) {
     if (!model.tasks.length) return `<p class="empty-msg">${t(panel.emptyKey)}</p>`;
     return model.tasks.map(task => {
@@ -147,20 +110,13 @@ function renderTasksPanel(panel) {
                 </div>
             `;
         }
-        const scheduleHtml = renderTaskSchedule(task);
         return /*html*/`
-            <div class="task-item${task.date ? ' task-scheduled' : ''}"
-                draggable="true"
-                ondragstart="taskDragStart(event, ${task.id})"
-                ondragend="taskDragEnd(event)"
-                data-task-id="${task.id}">
+            <div class="task-item">
                 <div class="task-main">
-                    <span class="task-drag-handle" title="${t('task_drag_hint')}">⋮</span>
                     <input type="checkbox" ${task.ischecked ? 'checked' : ''}
                         onchange="toggleTask(${task.id})">
                     <span class="task-label ${task.ischecked ? 'done' : ''}"
                         onclick="toggleTaskPanel(${task.id})">${escHtml(task.task)}</span>
-                    ${scheduleHtml}
                     <span class="task-expand" onclick="toggleTaskPanel(${task.id})">
                         ${subInfo} ${isOpen ? '▲' : '▼'}
                     </span>
