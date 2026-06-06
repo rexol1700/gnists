@@ -3629,3 +3629,139 @@ body.darkmode .cal-day-ev.cal-ev-ink { border-left-color: var(--paper); }
     .hab-sg-count { grid-column: 2; text-align: left; }
     .hab-week-row { grid-template-columns: minmax(100px, 1fr) repeat(7, 28px); }
 }
+
+
+/* ===== Task -> Calendar scheduling (drag & drop) ===== */
+
+/* Drag grip on each task row: subtle until hover, hidden on touch */
+.task-drag-handle{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:18px;
+  align-self:stretch;
+  margin-right:2px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1;
+  cursor:grab;
+  opacity:0;
+  transition:opacity .15s ease,color .15s ease;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.task-item:hover .task-drag-handle{ opacity:.55; }
+.task-drag-handle:hover{ color:var(--ink); opacity:1; }
+.task-drag-handle:active{ cursor:grabbing; }
+
+/* The task row while it is being dragged */
+.task-item.task-dragging{
+  opacity:.5;
+  border-color:var(--accent);
+  box-shadow:0 0 0 1px var(--accent) inset;
+}
+
+/* While a task drag is in progress, hint that the calendar can receive it */
+body.task-drag-active .cal-cell{
+  transition:background .12s ease,box-shadow .12s ease;
+}
+body.task-drag-active .cal-cell:not(.cal-cell-other){
+  cursor:copy;
+}
+
+/* Calendar cell highlighted as the active drop target */
+.cal-cell.cal-cell-droptarget{
+  background:color-mix(in oklch, var(--accent) 16%, transparent);
+  box-shadow:0 0 0 2px var(--accent) inset;
+  border-radius:var(--radius, 8px);
+}
+
+/* "Schedule" button shown on the task row (calendar/clock glyph) */
+.task-schedule-btn{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:22px;
+  height:22px;
+  padding:0;
+  border:none;
+  background:transparent;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1;
+  border-radius:var(--radius, 8px);
+  cursor:pointer;
+  opacity:0;
+  transition:opacity .15s ease,color .15s ease,background .15s ease;
+}
+.task-item:hover .task-schedule-btn{ opacity:.7; }
+.task-schedule-btn:hover{
+  opacity:1;
+  color:var(--ink);
+  background:var(--paper-2);
+}
+
+/* Date pill on a scheduled task */
+.task-date-pill{
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  margin-left:6px;
+  padding:1px 6px;
+  font-size:11px;
+  font-weight:600;
+  line-height:1.6;
+  color:var(--accent);
+  background:color-mix(in oklch, var(--accent) 16%, transparent);
+  border:1px solid color-mix(in oklch, var(--accent) 45%, transparent);
+  border-radius:999px;
+  white-space:nowrap;
+}
+.task-date-x{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:13px;
+  height:13px;
+  margin:0;
+  padding:0;
+  border:none;
+  background:transparent;
+  color:var(--accent);
+  font-size:10px;
+  line-height:1;
+  border-radius:50%;
+  cursor:pointer;
+  opacity:.65;
+  transition:opacity .12s ease,background .12s ease;
+}
+.task-date-x:hover{ opacity:1; background:rgba(0,0,0,.08); }
+
+/* Slightly de-emphasise the schedule button once a task already has a date */
+.task-item.task-scheduled .task-schedule-btn{ display:none; }
+
+/* Inline date picker for the non-drag fallback */
+.task-schedule-input{
+  flex:0 0 auto;
+  margin-left:6px;
+  padding:1px 5px;
+  font:inherit;
+  font-size:12px;
+  color:var(--ink);
+  background:var(--paper);
+  border:1px solid var(--accent);
+  border-radius:var(--radius, 8px);
+  outline:none;
+}
+.task-schedule-input:focus{
+  box-shadow:0 0 0 2px color-mix(in oklch, var(--accent) 25%, transparent);
+}
+
+/* Touch / coarse pointers: no hover, so keep affordances visible and drop the grip */
+@media (hover:none){
+  .task-drag-handle{ display:none; }
+  .task-schedule-btn{ opacity:.7; }
+}

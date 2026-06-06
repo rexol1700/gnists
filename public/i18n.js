@@ -102,6 +102,12 @@ const LANGS = {
         wd_4:             'Torsdag',
         wd_5:             'Fredag',
         wd_6:             'Lørdag',
+        // Task scheduling (drag-to-calendar)
+        task_scheduled: 'Oppgave lagt i kalenderen',
+        task_unscheduled: 'Oppgave fjernet fra kalenderen',
+        schedule_task: 'Planlegg oppgave',
+        task_unschedule: 'Fjern fra kalender',
+        task_drag_hint: 'Dra til en dag i kalenderen for \u00e5 planlegge',
         // Norwegian short month names (Jan=0)
         mo_0:  'jan', mo_1:  'feb', mo_2:  'mar', mo_3:  'apr',
         mo_4:  'mai', mo_5:  'jun', mo_6:  'jul', mo_7:  'aug',
@@ -434,6 +440,12 @@ const LANGS = {
         wd_4:             'Thursday',
         wd_5:             'Friday',
         wd_6:             'Saturday',
+        // Task scheduling (drag-to-calendar)
+        task_scheduled: 'Task added to calendar',
+        task_unscheduled: 'Task removed from calendar',
+        schedule_task: 'Schedule task',
+        task_unschedule: 'Remove from calendar',
+        task_drag_hint: 'Drag onto a calendar day to schedule',
         // English short month names (Jan=0)
         mo_0:  'Jan', mo_1:  'Feb', mo_2:  'Mar', mo_3:  'Apr',
         mo_4:  'May', mo_5:  'Jun', mo_6:  'Jul', mo_7:  'Aug',
