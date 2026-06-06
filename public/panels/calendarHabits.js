@@ -448,6 +448,58 @@ function habitWeekCount(item) {
     return count;
 }
 
+// Count completions within a specific week (startOfWeek date → that week's 7 days).
+function habitWeekCountFor(completions, weekStart) {
+    const set = new Set(completions);
+    let count = 0;
+    for (let i = 0; i < 7; i++) {
+        if (set.has(ymd(addDays(weekStart, i)))) count += 1;
+    }
+    return count;
+}
+
+// Weekly streak: consecutive weeks (ending with the current week) where the
+// number of completions met or exceeded the weekly target. The current week
+// is only counted as a "miss" once it is already over — an in-progress week
+// that hasn't hit target yet does NOT break the streak.
+function habitWeekStreak(completions, target) {
+    if (!completions || !completions.length) return 0;
+    const tgt = Math.max(1, Math.min(7, Number(target) || 7));
+    let streak = 0;
+    let weekStart = startOfWeek(new Date());
+    // If the current (in-progress) week hasn't reached target yet, don't let it
+    // break the streak — start counting from last week instead.
+    if (habitWeekCountFor(completions, weekStart) < tgt) {
+        weekStart = addDays(weekStart, -7);
+    }
+    while (habitWeekCountFor(completions, weekStart) >= tgt) {
+        streak += 1;
+        weekStart = addDays(weekStart, -7);
+    }
+    return streak;
+}
+
+// Best (longest) run of consecutive on-target weeks across all history.
+function habitBestWeekStreak(completions, target) {
+    if (!completions || !completions.length) return 0;
+    const tgt = Math.max(1, Math.min(7, Number(target) || 7));
+    const sorted = [...completions].sort();
+    const earliest = startOfWeek(parseYmd(sorted[0]));
+    const thisWeek = startOfWeek(new Date());
+    let best = 0, cur = 0;
+    let w = earliest;
+    while (w <= thisWeek) {
+        if (habitWeekCountFor(completions, w) >= tgt) {
+            cur += 1;
+            best = Math.max(best, cur);
+        } else {
+            cur = 0;
+        }
+        w = addDays(w, 7);
+    }
+    return best;
+}
+
 function renderHabitsPanel(panel) {
     const view = model.habitsView || 'today';
     const tabs = `
@@ -480,7 +532,12 @@ function renderHabitsToday(items) {
     return `<div class="hab-list">${items.map(it => {
         const data = habitData(it);
         const done = habitDoneToday(it);
-        const streak = habitStreak(data.completions);
+        // Context-aware streak badge: daily 🔥 for everyday habits,
+        // weekly count for habits with a weekly target (< 7/week).
+        const dailyHabit = data.target >= 7;
+        const streak = dailyHabit
+            ? habitStreak(data.completions)
+            : habitWeekStreak(data.completions, data.target);
         const isOpen = model.habitsExpanded === it.id;
         const editor = isOpen ? renderHabitEditor(it, data) : '';
         return `
@@ -500,7 +557,7 @@ function renderHabitsToday(items) {
                         ${data.goal ? `<div class="hab-goal">${escHtml(data.goal)}</div>` : ''}
                     </div>
                     <div class="hab-meta">
-                        ${streak ? `<span class="hab-streak-badge" title="${t('hab_streak')}">🔥 ${streak}</span>` : ''}
+                        ${streak ? `<span class="hab-streak-badge" title="${dailyHabit ? t('hab_streak') : t('hab_week_streak')}">${dailyHabit ? '🔥' : '📅'} ${streak}</span>` : ''}
                         ${data.reminder ? `<span class="hab-reminder">⏰ ${escHtml(data.reminder)}</span>` : ''}
                         <button class="btn-icon" onclick="habitToggleExpand(${it.id})" data-testid="habit-edit-${it.id}">${isOpen ? '▲' : '▼'}</button>
                     </div>
@@ -558,25 +615,43 @@ function renderHabitsWeek(items) {
     return `<div class="hab-week-grid">${head}${rows}</div>`;
 }
 
+const HAB_STATS_WINDOW = 90;
+
 function renderHabitsStats(items) {
     return `<div class="hab-stats">${items.map(it => {
         const data = habitData(it);
-        const last30 = (() => {
-            let n = 0;
-            const today = new Date();
-            for (let i = 0; i < 30; i++) {
-                if (data.completions.includes(ymd(addDays(today, -i)))) n += 1;
-            }
-            return n;
-        })();
-        const rate = Math.round((last30 / 30) * 100);
-        const best = habitBestStreak(data.completions);
-        const streak = habitStreak(data.completions);
-
-        // Tiny inline bar chart over the last 30 days (one bar per day)
         const today = new Date();
+
+        // ── Open data: just the figures, no pressure framing ──────────────
+        // Completions within the last 90 days, and all-time total.
+        let last90 = 0;
+        for (let i = 0; i < HAB_STATS_WINDOW; i++) {
+            if (data.completions.includes(ymd(addDays(today, -i)))) last90 += 1;
+        }
+        const totalDone = data.completions.length;
+        const rate = Math.round((last90 / HAB_STATS_WINDOW) * 100);
+
+        // ── Context-aware streak ──────────────────────────────────────────
+        // A daily streak only makes sense for an everyday habit (target 7/7).
+        // For habits with a weekly target (< 7), show a weekly streak instead:
+        // consecutive weeks the weekly target was met.
+        const daily = data.target >= 7;
+        let streakNum, streakLabel, bestNum, bestLabel;
+        if (daily) {
+            streakNum   = habitStreak(data.completions);
+            streakLabel = t('hab_streak_current');
+            bestNum     = habitBestStreak(data.completions);
+            bestLabel   = t('hab_best_streak');
+        } else {
+            streakNum   = habitWeekStreak(data.completions, data.target);
+            streakLabel = t('hab_week_streak');
+            bestNum     = habitBestWeekStreak(data.completions, data.target);
+            bestLabel   = t('hab_best_week_streak');
+        }
+
+        // Inline bar chart over the last 90 days (one bar per day).
         const bars = [];
-        for (let i = 29; i >= 0; i--) {
+        for (let i = HAB_STATS_WINDOW - 1; i >= 0; i--) {
             const d = addDays(today, -i);
             const done = data.completions.includes(ymd(d));
             bars.push(`<span class="hab-bar ${done ? 'on' : ''}" title="${ymd(d)}"></span>`);
@@ -589,23 +664,27 @@ function renderHabitsStats(items) {
                 </div>
                 <div class="hab-stat-numbers">
                     <div class="hab-stat-n">
-                        <span class="hab-stat-num">${last30}/30</span>
-                        <span class="hab-stat-label">${t('hab_last_30')}</span>
+                        <span class="hab-stat-num">${last90}</span>
+                        <span class="hab-stat-label">${t('hab_last_90')}</span>
+                    </div>
+                    <div class="hab-stat-n">
+                        <span class="hab-stat-num">${totalDone}</span>
+                        <span class="hab-stat-label">${t('hab_total_completions')}</span>
                     </div>
                     <div class="hab-stat-n">
                         <span class="hab-stat-num">${rate}%</span>
                         <span class="hab-stat-label">${t('hab_completion_rate')}</span>
                     </div>
                     <div class="hab-stat-n">
-                        <span class="hab-stat-num">${streak}</span>
-                        <span class="hab-stat-label">${t('hab_streak')}</span>
+                        <span class="hab-stat-num">${streakNum}</span>
+                        <span class="hab-stat-label">${streakLabel}</span>
                     </div>
                     <div class="hab-stat-n">
-                        <span class="hab-stat-num">${best}</span>
-                        <span class="hab-stat-label">${t('hab_best_streak')}</span>
+                        <span class="hab-stat-num">${bestNum}</span>
+                        <span class="hab-stat-label">${bestLabel}</span>
                     </div>
                 </div>
-                <div class="hab-bars">${bars.join('')}</div>
+                <div class="hab-bars hab-bars-90">${bars.join('')}</div>
             </div>
         `;
     }).join('')}</div>`;

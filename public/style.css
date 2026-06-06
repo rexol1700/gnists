@@ -3520,7 +3520,7 @@ body.darkmode {
 }
 .hab-stat-numbers {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 8px;
 }
 .hab-stat-n {
@@ -3549,6 +3549,11 @@ body.darkmode {
     gap: 2px;
     height: 26px;
 }
+.hab-bars.hab-bars-90 {
+    grid-template-columns: repeat(90, 1fr);
+    gap: 1px;
+}
+.hab-bars.hab-bars-90 .hab-bar { border-radius: 1px; }
 .hab-bar {
     background: var(--bone);
     border-radius: 2px;
@@ -3578,5 +3583,6 @@ body.darkmode .cal-day-ev.cal-ev-ink { border-left-color: var(--paper); }
     .cal-week-view { grid-template-columns: repeat(7, minmax(80px, 1fr)); overflow-x: auto; }
     .hab-editor-row { grid-template-columns: 1fr; }
     .hab-stat-numbers { grid-template-columns: repeat(2, 1fr); }
+    .hab-bars.hab-bars-90 { gap: 1px; height: 22px; }
     .hab-week-row { grid-template-columns: minmax(100px, 1fr) repeat(7, 28px); }
 }
