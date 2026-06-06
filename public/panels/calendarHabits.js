@@ -615,47 +615,67 @@ function renderHabitsWeek(items) {
     return `<div class="hab-week-grid">${head}${rows}</div>`;
 }
 
-const HAB_STATS_WINDOW = 90;
+// Number of week-rows to show in the stats grid (most recent first).
+const HAB_STATS_WEEKS = 12;
+const HAB_STATS_WINDOW = HAB_STATS_WEEKS * 7;
 
 function renderHabitsStats(items) {
+    const dayInitials = t('hab_day_initials').split(',');
     return `<div class="hab-stats">${items.map(it => {
         const data = habitData(it);
         const today = new Date();
+        const tgt = Math.max(1, Math.min(7, Number(data.target) || 7));
 
-        // ── Open data: just the figures, no pressure framing ──────────────
-        // Completions within the last 90 days, and all-time total.
+        // \u2500\u2500 Open data: just the figures, no pressure framing \u2500\u2500
         let last90 = 0;
         for (let i = 0; i < HAB_STATS_WINDOW; i++) {
             if (data.completions.includes(ymd(addDays(today, -i)))) last90 += 1;
         }
         const totalDone = data.completions.length;
-        const rate = Math.round((last90 / HAB_STATS_WINDOW) * 100);
+        const completionSet = new Set(data.completions);
 
-        // ── Context-aware streak ──────────────────────────────────────────
-        // A daily streak only makes sense for an everyday habit (target 7/7).
-        // For habits with a weekly target (< 7), show a weekly streak instead:
-        // consecutive weeks the weekly target was met.
-        const daily = data.target >= 7;
-        let streakNum, streakLabel, bestNum, bestLabel;
-        if (daily) {
-            streakNum   = habitStreak(data.completions);
-            streakLabel = t('hab_streak_current');
-            bestNum     = habitBestStreak(data.completions);
-            bestLabel   = t('hab_best_streak');
-        } else {
-            streakNum   = habitWeekStreak(data.completions, data.target);
-            streakLabel = t('hab_week_streak');
-            bestNum     = habitBestWeekStreak(data.completions, data.target);
-            bestLabel   = t('hab_best_week_streak');
+        // \u2500\u2500 Streak (consecutive on-target weeks) \u2500\u2500
+        const weekStreak = habitWeekStreak(data.completions, data.target);
+        const bestWeekStreak = habitBestWeekStreak(data.completions, data.target);
+
+        // \u2500\u2500 Weekly grid: one row per week, most recent at the top \u2500\u2500
+        // A week-row turns "completed" once it reaches the weekly target.
+        const thisWeekStart = startOfWeek(today);
+        const rows = [];
+        for (let w = 0; w < HAB_STATS_WEEKS; w++) {
+            const weekStart = addDays(thisWeekStart, -7 * w);
+            const isCurrent = w === 0;
+            let weekCount = 0;
+            const cells = [];
+            for (let d = 0; d < 7; d++) {
+                const cellDate = addDays(weekStart, d);
+                const key = ymd(cellDate);
+                const isFuture = cellDate > today;
+                const done = completionSet.has(key);
+                if (done) weekCount += 1;
+                const cls = ['hab-sg-cell'];
+                if (done) cls.push('on');
+                if (isFuture) cls.push('future');
+                cells.push(
+                    `<span class="${cls.join(' ')}" title="${key}">` +
+                    `<span class="hab-sg-cell-d">${dayInitials[d] || ''}</span></span>`
+                );
+            }
+            const complete = weekCount >= tgt;
+            const rowCls = ['hab-sg-row'];
+            if (complete) rowCls.push('complete');
+            if (isCurrent) rowCls.push('current');
+            const weekLabel = isCurrent
+                ? t('hab_week_this')
+                : t('hab_week_ago').replace('{n}', w);
+            rows.push(`
+                <div class="${rowCls.join(' ')}">
+                    <span class="hab-sg-label">${weekLabel}</span>
+                    <span class="hab-sg-cells">${cells.join('')}</span>
+                    <span class="hab-sg-count">${weekCount}/${tgt}${complete ? ' \u2713' : ''}</span>
+                </div>`);
         }
 
-        // Inline bar chart over the last 90 days (one bar per day).
-        const bars = [];
-        for (let i = HAB_STATS_WINDOW - 1; i >= 0; i--) {
-            const d = addDays(today, -i);
-            const done = data.completions.includes(ymd(d));
-            bars.push(`<span class="hab-bar ${done ? 'on' : ''}" title="${ymd(d)}"></span>`);
-        }
         return `
             <div class="hab-stat-card" data-testid="habit-stat-${it.id}">
                 <div class="hab-stat-head">
@@ -663,6 +683,14 @@ function renderHabitsStats(items) {
                     ${data.category ? `<span class="hab-cat">${escHtml(data.category)}</span>` : ''}
                 </div>
                 <div class="hab-stat-numbers">
+                    <div class="hab-stat-n hab-stat-streak">
+                        <span class="hab-stat-num">\uD83D\uDD25 ${weekStreak}</span>
+                        <span class="hab-stat-label">${t('hab_week_streak')}</span>
+                    </div>
+                    <div class="hab-stat-n">
+                        <span class="hab-stat-num">${bestWeekStreak}</span>
+                        <span class="hab-stat-label">${t('hab_best_week_streak')}</span>
+                    </div>
                     <div class="hab-stat-n">
                         <span class="hab-stat-num">${last90}</span>
                         <span class="hab-stat-label">${t('hab_last_90')}</span>
@@ -671,20 +699,8 @@ function renderHabitsStats(items) {
                         <span class="hab-stat-num">${totalDone}</span>
                         <span class="hab-stat-label">${t('hab_total_completions')}</span>
                     </div>
-                    <div class="hab-stat-n">
-                        <span class="hab-stat-num">${rate}%</span>
-                        <span class="hab-stat-label">${t('hab_completion_rate')}</span>
-                    </div>
-                    <div class="hab-stat-n">
-                        <span class="hab-stat-num">${streakNum}</span>
-                        <span class="hab-stat-label">${streakLabel}</span>
-                    </div>
-                    <div class="hab-stat-n">
-                        <span class="hab-stat-num">${bestNum}</span>
-                        <span class="hab-stat-label">${bestLabel}</span>
-                    </div>
                 </div>
-                <div class="hab-bars hab-bars-90">${bars.join('')}</div>
+                <div class="hab-sg-grid" data-testid="habit-weekgrid-${it.id}">${rows.join('')}</div>
             </div>
         `;
     }).join('')}</div>`;

@@ -3520,9 +3520,10 @@ body.darkmode {
 }
 .hab-stat-numbers {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 8px;
 }
+.hab-stat-streak .hab-stat-num { color: var(--ev-sage); }
 .hab-stat-n {
     display: flex;
     flex-direction: column;
@@ -3543,25 +3544,66 @@ body.darkmode {
     color: var(--muted);
     margin-top: 4px;
 }
-.hab-bars {
+/* Weekly stats grid \u2014 one row per week, completed weeks highlighted */
+.hab-sg-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+.hab-sg-row {
     display: grid;
-    grid-template-columns: repeat(30, 1fr);
-    gap: 2px;
-    height: 26px;
+    grid-template-columns: minmax(78px, 0.9fr) minmax(0, 3fr) minmax(40px, auto);
+    align-items: center;
+    gap: 8px;
+    padding: 3px 6px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--paper);
+    transition: background 0.15s, border-color 0.15s;
 }
-.hab-bars.hab-bars-90 {
-    grid-template-columns: repeat(90, 1fr);
-    gap: 1px;
+.hab-sg-row.current { border-style: dashed; }
+.hab-sg-row.complete {
+    background: color-mix(in srgb, var(--ev-sage) 16%, var(--paper));
+    border-color: var(--ev-sage);
 }
-.hab-bars.hab-bars-90 .hab-bar { border-radius: 1px; }
-.hab-bar {
+.hab-sg-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+}
+.hab-sg-cells {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 3px;
+}
+.hab-sg-cell {
+    aspect-ratio: 1 / 1;
+    min-height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     background: var(--bone);
-    border-radius: 2px;
-    display: block;
+    border-radius: 4px;
 }
-.hab-bar.on {
-    background: var(--ev-sage);
+.hab-sg-cell-d {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--muted);
+    opacity: 0.55;
 }
+.hab-sg-cell.on { background: var(--ev-sage); }
+.hab-sg-cell.on .hab-sg-cell-d { color: var(--paper); opacity: 0.9; }
+.hab-sg-cell.future { opacity: 0.4; }
+.hab-sg-count {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    white-space: nowrap;
+}
+.hab-sg-row.complete .hab-sg-count { color: var(--ev-sage); font-weight: 600; }
 
 /* Dark mode tweaks */
 body.darkmode .cal-today-btn { background: var(--paper); color: var(--ink); }
@@ -3570,7 +3612,7 @@ body.darkmode .cal-cell-today .cal-cell-num { background: var(--paper); color: v
 body.darkmode .cal-day-ev .cal-ev-time { background: var(--paper); color: var(--ink); }
 body.darkmode .hab-check.on,
 body.darkmode .hab-week-dot.on,
-body.darkmode .hab-bar.on { color: var(--paper-2); }
+body.darkmode .hab-sg-cell.on .hab-sg-cell-d { color: var(--paper-2); }
 body.darkmode .cal-ev-ink {
     background: #3A3733;
     color: var(--ink);
@@ -3583,6 +3625,7 @@ body.darkmode .cal-day-ev.cal-ev-ink { border-left-color: var(--paper); }
     .cal-week-view { grid-template-columns: repeat(7, minmax(80px, 1fr)); overflow-x: auto; }
     .hab-editor-row { grid-template-columns: 1fr; }
     .hab-stat-numbers { grid-template-columns: repeat(2, 1fr); }
-    .hab-bars.hab-bars-90 { gap: 1px; height: 22px; }
+    .hab-sg-row { grid-template-columns: 64px minmax(0, 1fr); }
+    .hab-sg-count { grid-column: 2; text-align: left; }
     .hab-week-row { grid-template-columns: minmax(100px, 1fr) repeat(7, 28px); }
 }
