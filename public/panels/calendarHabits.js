@@ -224,6 +224,27 @@ function renderCalendarHeader(cursor, view) {
     `;
 }
 
+function calEventIcon(e) {
+    // Returns a small leading glyph for a merged calendar event based on its source.
+    let glyph;
+    switch (e.source) {
+        case 'task':
+            glyph = e.done ? '\u2611' : '\u2610'; // checked / unchecked box
+            break;
+        case 'bill':
+            glyph = '\uD83D\uDCB5'; // banknote
+            break;
+        case 'reminder':
+            glyph = '\uD83D\uDD14'; // bell
+            break;
+        case 'calendar':
+        default:
+            glyph = '\uD83D\uDCC5'; // calendar
+            break;
+    }
+    return `<span class="cal-ev-icon" aria-hidden="true">${glyph}</span>`;
+}
+
 function renderCalendarMonth(cursor) {
     // Grid: 6 rows × 7 cols, starting on Monday
     const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
